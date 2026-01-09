@@ -6,6 +6,7 @@ import os
 import shutil
 from pathlib import Path
 import pandas as pd
+import re
 from analyze import analyze_calls
 
 app = FastAPI(title="Allodoct Analysis API")
@@ -120,12 +121,69 @@ async def analyze_files(
                 print(f"Skipping invalid row: {row.to_dict()}")
                 continue
 
+            # Parser la colonne "Tous les examens" pour créer une structure JSON
+            exams_list = []
+            # Garder la version string pour compatibilité avec le frontend
+            all_exams_str = str(row['Tous les examens']) if pd.notna(row['Tous les examens']) else ""
+
+            print(f"\n🔍 DEBUG - Parsing examens pour catégorie: {row['Catégorie']}")
+            print(f"   Contenu brut: {all_exams_str[:200] if all_exams_str else 'vide'}...")  # Premiers 200 caractères
+
+            if all_exams_str and all_exams_str != 'nan':
+                for exam_line in all_exams_str.split('\n'):
+                    if not exam_line.strip():
+                        continue
+
+                    try:
+                        # Format: "Nom de l'examen§133 (NF:24|NA:109)§id1|id2|id3"
+                        parts = exam_line.split('§')
+
+                        print(f"   📝 Ligne: {exam_line[:100]}...")
+                        print(f"   📦 Parts: {len(parts)} parties trouvées")
+
+                        if len(parts) >= 2:
+                            exam_name = parts[0].strip()
+
+                            # Parser "133 (NF:24|NA:109)"
+                            count_and_tags = parts[1].strip()
+
+                            # Extraire le total
+                            total_match = re.match(r'(\d+)\s*\(NF:(\d+)\|NA:(\d+)\)', count_and_tags)
+
+                            if total_match:
+                                exam_total = int(total_match.group(1))
+                                exam_nf = int(total_match.group(2))
+                                exam_na = int(total_match.group(3))
+
+                                # Extraire les IDs si présents
+                                exam_ids = []
+                                if len(parts) >= 3:
+                                    ids_str = parts[2].strip()
+                                    exam_ids = [id.strip() for id in ids_str.split('|') if id.strip()]
+
+                                exams_list.append({
+                                    "name": exam_name,
+                                    "total": exam_total,
+                                    "not_found": exam_nf,
+                                    "not_authorized": exam_na,
+                                    "ids": exam_ids
+                                })
+                                print(f"   ✅ Examen parsé: {exam_name} (Total: {exam_total})")
+                            else:
+                                print(f"   ⚠️  Regex ne match pas: {count_and_tags}")
+                    except Exception as e:
+                        print(f"   ❌ Erreur lors du parsing de l'examen: {exam_line[:100]} - {e}")
+                        import traceback
+                        traceback.print_exc()
+                        continue
+
             statistics.append({
                 "category": str(row['Catégorie']),
                 "total": total_int,
                 "exam_not_found": exam_nf_int,
                 "exam_not_authorized": exam_na_int,
-                "all_exams": str(row['Tous les examens']) if pd.notna(row['Tous les examens']) else ""
+                "all_exams": all_exams_str,  # Format string pour compatibilité
+                "exams": exams_list  # Format structuré pour affichage détaillé
             })
         
         # Calculer le résumé

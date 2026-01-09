@@ -1,48 +1,11 @@
 'use client'
 
 import { useState, Fragment } from 'react'
-import { ChevronDown, ChevronUp, Search, Filter, Eye } from 'lucide-react'
+import { ChevronDown, ChevronUp, Search, Filter } from 'lucide-react'
 import { CategoryStats } from '@/lib/types'
 
 interface InteractiveTableProps {
   statistics: CategoryStats[]
-}
-
-// Composant pour afficher un examen avec ses ID externes
-function ExamWithIds({ exam, count, ids, isIncompris }: { exam: string, count: string, ids: string[], isIncompris: boolean }) {
-  const [showAllIds, setShowAllIds] = useState(false)
-
-  if (!isIncompris || ids.length === 0) {
-    // Pour les autres catégories, affichage simple
-    return <span>{exam} ({count})</span>
-  }
-
-  // Pour INTITULES INCOMPRIS, afficher les IDs
-  const displayIds = showAllIds ? ids : ids.slice(0, 1)
-
-  return (
-    <div className="flex items-start gap-2">
-      <span className="flex-1">{exam} ({count})</span>
-      <div className="flex items-center gap-1 text-xs">
-        <span className="text-blue-600 font-mono">
-          {displayIds.join(', ')}
-        </span>
-        {ids.length > 1 && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setShowAllIds(!showAllIds)
-            }}
-            className="ml-1 px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded flex items-center gap-1 transition-colors"
-            title={showAllIds ? 'Masquer les IDs' : `Voir tous les ${ids.length} IDs`}
-          >
-            <Eye className="w-3 h-3" />
-            {showAllIds ? 'Masquer' : `+${ids.length - 1}`}
-          </button>
-        )}
-      </div>
-    </div>
-  )
 }
 
 export default function InteractiveTable({ statistics }: InteractiveTableProps) {
@@ -184,30 +147,48 @@ export default function InteractiveTable({ statistics }: InteractiveTableProps) 
                         <h4 className="font-semibold text-gray-900 mb-3 sticky top-0 bg-white pb-2">
                           📋 Tous les examens de la catégorie {stat.category} ({stat.total} total)
                         </h4>
-                        <div className="space-y-1 text-sm">
-                          {stat.all_exams.split('\n').map((examLine, idx) => {
-                            // Parser le format: "exam§count§id1|id2|id3"
-                            const parts = examLine.split('§')
-                            const exam = parts[0] || ''
-                            const count = parts[1] || '0'
-                            const ids = parts[2] ? parts[2].split('|').filter(id => id.trim()) : []
 
-                            return (
-                              <div key={idx} className="flex items-start gap-2 p-2 hover:bg-gray-50 rounded border-b border-gray-100">
-                                <span className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                                  {idx + 1}
-                                </span>
-                                <div className="text-gray-700 flex-1">
-                                  <ExamWithIds
-                                    exam={exam}
-                                    count={count}
-                                    ids={ids}
-                                    isIncompris={stat.category === 'INTITULES INCOMPRIS'}
-                                  />
-                                </div>
-                              </div>
-                            )
-                          })}
+                        {/* Tableau des examens avec colonnes alignées */}
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-gray-100 border-b-2 border-gray-300">
+                                <th className="px-3 py-2 text-left font-semibold text-gray-700 w-12">#</th>
+                                <th className="px-3 py-2 text-left font-semibold text-gray-700">Examen</th>
+                                <th className="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap w-24">Total</th>
+                                <th className="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap w-32">Non trouvés</th>
+                                <th className="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap w-32">Non autorisés</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {stat.exams && stat.exams.map((exam, idx) => (
+                                <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
+                                  <td className="px-3 py-2 text-center">
+                                    <span className="inline-flex items-center justify-center w-6 h-6 bg-blue-600 text-white rounded-full text-xs font-bold">
+                                      {idx + 1}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2 text-gray-800">
+                                    {exam.name}
+                                    {stat.category === 'INTITULES INCOMPRIS' && exam.ids.length > 0 && (
+                                      <span className="ml-2 text-xs text-blue-600 font-mono">
+                                        ({exam.ids.slice(0, 2).join(', ')}{exam.ids.length > 2 ? `...` : ''})
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 text-center font-semibold text-gray-900">
+                                    {exam.total}
+                                  </td>
+                                  <td className="px-3 py-2 text-center font-medium text-red-600">
+                                    {exam.not_found}
+                                  </td>
+                                  <td className="px-3 py-2 text-center font-medium text-orange-600">
+                                    {exam.not_authorized}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
                       </div>
                     </td>

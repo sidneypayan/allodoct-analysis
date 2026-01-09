@@ -198,14 +198,20 @@ def analyze_calls(not_found_file: str, not_authorized_file: str, reference_file:
         not_found = len(df_cat[df_cat['Tag'] == 'exam_not_found'])
         not_authorized = len(df_cat[df_cat['Tag'] == 'exam_not_authorized'])
 
-        # TOUS les examens triés par fréquence avec leurs ID externes (surtout pour INTITULES INCOMPRIS)
+        # TOUS les examens triés par fréquence avec leurs tags et ID externes
         all_exams = df_cat['Examen Identifié'].value_counts()
 
-        # Créer une liste avec les examens et leurs ID externes
+        # Créer une liste avec les examens, leurs tags et leurs ID externes
         exams_with_ids = []
         for exam, count in all_exams.items():
+            df_exam = df_cat[df_cat['Examen Identifié'] == exam]
+
+            # Compter les tags pour cet examen
+            nf_count = len(df_exam[df_exam['Tag'] == 'exam_not_found'])
+            na_count = len(df_exam[df_exam['Tag'] == 'exam_not_authorized'])
+
             # Récupérer tous les ID externes pour cet examen
-            ids = df_cat[df_cat['Examen Identifié'] == exam]['Id Externe'].dropna().tolist()
+            ids = df_exam['Id Externe'].dropna().tolist()
             # Convertir en int si possible pour éviter les .0
             ids_clean = []
             for id_val in ids:
@@ -215,7 +221,7 @@ def analyze_calls(not_found_file: str, not_authorized_file: str, reference_file:
                 except (ValueError, TypeError):
                     ids_clean.append(str(id_val))
             ids_str = '|'.join(ids_clean)  # Utiliser | comme séparateur
-            exams_with_ids.append(f"{exam}§{count}§{ids_str}")  # Utiliser § comme séparateur
+            exams_with_ids.append(f"{exam}§{count} (NF:{nf_count}|NA:{na_count})§{ids_str}")  # Utiliser § comme séparateur
 
         all_exams_str = '\n'.join(exams_with_ids)
 
@@ -243,11 +249,43 @@ def analyze_calls(not_found_file: str, not_authorized_file: str, reference_file:
         ascending=[True, False, True]
     )
     
-    # Grouper par examen unique (prendre le premier Id Externe pour chaque examen)
-    df_detailed_unique = df_detailed_sorted.drop_duplicates(
+    # Grouper par examen unique et compter les tags séparément
+    df_tag_counts = df_detailed.groupby(['Catégorie', 'Examen Identifié', 'Tag']).size().reset_index(name='count')
+    df_tag_pivot = df_tag_counts.pivot_table(
+        index=['Catégorie', 'Examen Identifié'],
+        columns='Tag',
+        values='count',
+        fill_value=0
+    ).reset_index()
+
+    # Ajouter les occurrences totales
+    not_found_col = df_tag_pivot['exam_not_found'] if 'exam_not_found' in df_tag_pivot.columns else 0
+    not_authorized_col = df_tag_pivot['exam_not_authorized'] if 'exam_not_authorized' in df_tag_pivot.columns else 0
+    df_tag_pivot['Occurrences'] = not_found_col + not_authorized_col
+
+    # Prendre le premier Id Externe pour chaque examen
+    df_first_id = df_detailed_sorted.drop_duplicates(
         subset=['Examen Identifié', 'Catégorie']
-    )[['Catégorie', 'Examen Identifié', 'Occurrences', 'Tag', 'Id Externe']]
-    
+    )[['Catégorie', 'Examen Identifié', 'Id Externe']]
+
+    # Fusionner les données
+    df_detailed_unique = df_tag_pivot.merge(df_first_id, on=['Catégorie', 'Examen Identifié'])
+
+    # Réorganiser les colonnes pour avoir : Catégorie, Examen, Occurrences, Not Found, Not Authorized, Id Externe
+    cols_order = ['Catégorie', 'Examen Identifié', 'Occurrences']
+    if 'exam_not_found' in df_detailed_unique.columns:
+        cols_order.append('exam_not_found')
+    if 'exam_not_authorized' in df_detailed_unique.columns:
+        cols_order.append('exam_not_authorized')
+    cols_order.append('Id Externe')
+    df_detailed_unique = df_detailed_unique[cols_order]
+
+    # Trier par catégorie puis par occurrences décroissantes
+    df_detailed_unique = df_detailed_unique.sort_values(
+        ['Catégorie', 'Occurrences'],
+        ascending=[True, False]
+    )
+
     # Ajouter une colonne avec tous les Id Externes (pour les commentaires)
     df_detailed_unique['All_Id_Externes'] = df_detailed_unique.apply(
         lambda row: exam_ids_dict.get((row['Examen Identifié'], row['Catégorie']), []),
@@ -471,12 +509,13 @@ def analyze_calls(not_found_file: str, not_authorized_file: str, reference_file:
         # Supprimer la colonne All_Id_Externes
         ws.delete_cols(all_ids_col)
 
-        # Ajuster les largeurs de colonnes (A=Catégorie, B=Examen Identifié, C=Occurrences, D=Tag, E=Id Externe)
+        # Ajuster les largeurs de colonnes (A=Catégorie, B=Examen Identifié, C=Occurrences, D=Not Found, E=Not Authorized, F=Id Externe)
         ws.column_dimensions['A'].width = 25  # Catégorie
         ws.column_dimensions['B'].width = 60  # Examen Identifié
         ws.column_dimensions['C'].width = 15  # Occurrences
-        ws.column_dimensions['D'].width = 20  # Tag
-        ws.column_dimensions['E'].width = 20  # Id Externe
+        ws.column_dimensions['D'].width = 20  # exam_not_found
+        ws.column_dimensions['E'].width = 20  # exam_not_authorized
+        ws.column_dimensions['F'].width = 20  # Id Externe
         
         # Figer la première ligne
         ws.freeze_panes = 'A2'

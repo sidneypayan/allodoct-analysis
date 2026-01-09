@@ -1,9 +1,18 @@
+export interface Exam {
+  name: string
+  total: number
+  not_found: number
+  not_authorized: number
+  ids: string[]
+}
+
 export interface CategoryStats {
   category: string
   total: number
   exam_not_found: number
   exam_not_authorized: number
-  all_exams: string  // Tous les examens avec occurrences
+  all_exams: string  // Format texte (compatibilité)
+  exams: Exam[]  // Format structuré
 }
 
 export interface ExamDetail {
