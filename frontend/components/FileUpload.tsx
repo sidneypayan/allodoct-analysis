@@ -2,8 +2,9 @@
 
 import { useState, useCallback } from 'react'
 import { Upload, FileSpreadsheet, X, CheckCircle } from 'lucide-react'
-import axios from 'axios'
 import { AnalysisResult } from '@/lib/types'
+import { usePyodide } from '@/lib/usePyodide'
+import { analyzeWithPyodide } from '@/lib/pyodideAnalyzer'
 
 interface FileUploadProps {
   onAnalysisComplete: (result: AnalysisResult) => void
@@ -21,6 +22,7 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { pyodide, loading: pyodideLoading, error: pyodideError } = usePyodide()
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -81,35 +83,46 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
       return
     }
 
-    const formData = new FormData()
-    
-    files.forEach(({ file, type }) => {
-      formData.append(type, file)
-    })
+    if (!pyodide) {
+      setError('Python n\'est pas encore chargé. Veuillez patienter...')
+      return
+    }
+
+    if (pyodideError) {
+      setError(`Erreur de chargement Python: ${pyodideError}`)
+      return
+    }
 
     try {
       onAnalysisStart()
       setError(null)
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-      const response = await axios.post(`${API_URL}/analyze`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        timeout: 300000 // 5 minutes timeout
-      })
+      const notFoundFile = files.find(f => f.type === 'not_found')?.file
+      const notAuthorizedFile = files.find(f => f.type === 'not_authorized')?.file
 
-      onAnalysisComplete(response.data)
-    } catch (err: any) {
-      onAnalysisError() // Stop loading on error
-
-      if (err.code === 'ECONNABORTED') {
-        setError('L\'analyse a pris trop de temps. Veuillez réessayer.')
-      } else if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
-        setError('Impossible de se connecter au serveur backend. Vérifiez que le backend est démarré sur http://localhost:8000')
-      } else {
-        setError(err.response?.data?.detail || 'Erreur lors de l\'analyse')
+      if (!notFoundFile || !notAuthorizedFile) {
+        setError('Fichiers manquants')
+        return
       }
+
+      // Créer un fichier reference.csv minimal (vide mais valide)
+      const referenceContent = 'exam_name,category\n'
+      const referenceBlob = new Blob([referenceContent], { type: 'text/csv' })
+      const referenceFile = new File([referenceBlob], 'reference.csv', { type: 'text/csv' })
+
+      console.log('🚀 Lancement de l\'analyse avec Pyodide...')
+      const result = await analyzeWithPyodide(
+        pyodide,
+        notFoundFile,
+        notAuthorizedFile,
+        referenceFile
+      )
+
+      onAnalysisComplete(result)
+    } catch (err: any) {
+      console.error('Erreur lors de l\'analyse:', err)
+      onAnalysisError()
+      setError(err.message || 'Erreur lors de l\'analyse')
     }
   }
 
@@ -126,6 +139,21 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
 
   return (
     <div className="space-y-4">
+      {/* Pyodide Loading Status */}
+      {pyodideLoading && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-blue-800">
+            🐍 Chargement de Python dans le navigateur... (cela peut prendre quelques secondes la première fois)
+          </p>
+        </div>
+      )}
+
+      {pyodideError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-800">❌ Erreur: {pyodideError}</p>
+        </div>
+      )}
+
       {/* Drop Zone */}
       <div
         onDragOver={handleDragOver}
@@ -199,16 +227,21 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
       {/* Analyze Button */}
       <button
         onClick={handleAnalyze}
-        disabled={!hasAllFiles}
+        disabled={!hasAllFiles || pyodideLoading || !!pyodideError}
         className={`
           w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all
-          ${hasAllFiles
+          ${hasAllFiles && !pyodideLoading && !pyodideError
             ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }
         `}
       >
-        {hasAllFiles ? '🚀 Lancer l\'analyse' : '⏳ En attente des 2 fichiers...'}
+        {pyodideLoading
+          ? '🐍 Chargement de Python...'
+          : hasAllFiles
+            ? '🚀 Lancer l\'analyse (100% local)'
+            : '⏳ En attente des 2 fichiers...'
+        }
       </button>
     </div>
   )
