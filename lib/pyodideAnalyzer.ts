@@ -94,6 +94,30 @@ def parse_exam_identified(exam_str):
         return []
     return [e.strip() for e in str(exam_str).split(';') if e.strip()]
 
+def normalize_exam_name(exam_str):
+    """Normalise un nom d'examen : minuscules + sans accents"""
+    if pd.isna(exam_str):
+        return ''
+
+    # Convertir en minuscules
+    normalized = str(exam_str).lower()
+
+    # Supprimer les accents
+    accents = {
+        'à': 'a', 'â': 'a', 'ä': 'a', 'á': 'a', 'ã': 'a', 'å': 'a',
+        'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
+        'ì': 'i', 'í': 'i', 'î': 'i', 'ï': 'i',
+        'ò': 'o', 'ó': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o',
+        'ù': 'u', 'ú': 'u', 'û': 'u', 'ü': 'u',
+        'ý': 'y', 'ÿ': 'y',
+        'ñ': 'n', 'ç': 'c'
+    }
+
+    for accent, letter in accents.items():
+        normalized = normalized.replace(accent, letter)
+
+    return normalized.strip()
+
 # Charger les fichiers
 print("📊 Chargement des données...")
 df_not_found = pd.read_excel('not_found.xlsx')
@@ -126,6 +150,7 @@ for idx, row in df_all.iterrows():
 
         detailed_results.append({
             'Examen Identifié': exam,
+            'Examen Normalisé': normalize_exam_name(exam),
             'Catégorie': category,
             'Tag': row['tag_type'],
             'Id Appel': row['Id'],
@@ -150,21 +175,26 @@ for category in valid_categories:
     not_found = len(df_cat[df_cat['Tag'] == 'exam_not_found'])
     not_authorized = len(df_cat[df_cat['Tag'] == 'exam_not_authorized'])
 
-    # Tous les examens avec leur répartition
-    all_exams = df_cat['Examen Identifié'].value_counts()
+    # Regrouper les examens par nom normalisé (ignorer casse et accents)
     exams_list = []
     exams_with_ids = []
 
-    for exam, count in all_exams.items():
-        df_exam = df_cat[df_cat['Examen Identifié'] == exam]
+    # Grouper par 'Examen Normalisé'
+    for normalized_name, df_exam_group in df_cat.groupby('Examen Normalisé'):
+        if not normalized_name:  # Ignorer les vides
+            continue
 
-        nf_count = len(df_exam[df_exam['Tag'] == 'exam_not_found'])
-        na_count = len(df_exam[df_exam['Tag'] == 'exam_not_authorized'])
+        # Prendre le nom original le plus fréquent (pour l'affichage)
+        original_name = df_exam_group['Examen Identifié'].mode()[0]
 
-        ids = df_exam['Id Externe'].dropna().astype(str).tolist()
+        count = len(df_exam_group)
+        nf_count = len(df_exam_group[df_exam_group['Tag'] == 'exam_not_found'])
+        na_count = len(df_exam_group[df_exam_group['Tag'] == 'exam_not_authorized'])
+
+        ids = df_exam_group['Id Externe'].dropna().astype(str).tolist()
 
         exams_list.append({
-            'name': exam,
+            'name': original_name,
             'total': int(count),
             'not_found': int(nf_count),
             'not_authorized': int(na_count),
@@ -172,7 +202,11 @@ for category in valid_categories:
         })
 
         ids_str = '|'.join(ids)
-        exams_with_ids.append(f"{exam}§{count} (NF:{nf_count}|NA:{na_count})§{ids_str}")
+        exams_with_ids.append(f"{original_name}§{count} (NF:{nf_count}|NA:{na_count})§{ids_str}")
+
+    # Trier par total décroissant
+    exams_list.sort(key=lambda x: x['total'], reverse=True)
+    exams_with_ids.sort(key=lambda x: int(x.split('§')[1].split(' ')[0]), reverse=True)
 
     all_exams_str = '\\n'.join(exams_with_ids)
 
@@ -187,7 +221,7 @@ for category in valid_categories:
 
 # Calculer le résumé
 total_calls = len(df_not_found) + len(df_not_authorized)
-unique_exams = len(df_detailed['Examen Identifié'].unique())
+unique_exams = len(df_detailed['Examen Normalisé'].unique())  # Compter les examens normalisés uniques
 bugs_detected = len(df_detailed[df_detailed['Catégorie'] == 'INTITULES INCOMPRIS'])
 
 summary = {
