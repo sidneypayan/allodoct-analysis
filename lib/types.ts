@@ -4,6 +4,8 @@ export interface Exam {
   not_found: number
   not_authorized: number
   ids: string[]
+  duration: number  // Durée totale en secondes
+  average_duration?: number  // Durée moyenne en secondes (pour appointments)
 }
 
 export interface CategoryStats {
@@ -11,6 +13,8 @@ export interface CategoryStats {
   total: number
   exam_not_found: number
   exam_not_authorized: number
+  total_duration: number  // Durée totale en secondes
+  average_duration?: number  // Durée moyenne en secondes (pour appointments)
   all_exams: string  // Format texte (compatibilité)
   exams: Exam[]  // Format structuré
 }
@@ -31,7 +35,10 @@ export interface AnalysisResult {
     unique_exams: number  // Nombre d'examens distincts
     categories_found: number
     bugs_detected: number
+    total_duration: number  // Durée totale en secondes
+    appointments_created: number  // Nombre de rendez-vous créés
   }
-  statistics: CategoryStats[]
-  excel_file_base64: string  // Excel encodé en base64
+  problems_statistics: CategoryStats[]  // Statistiques pour exam_not_found et exam_not_authorized
+  appointments_statistics: CategoryStats[]  // Statistiques pour appointment_created
+  excel_file_base64: string    // Excel encodé en base64
 }

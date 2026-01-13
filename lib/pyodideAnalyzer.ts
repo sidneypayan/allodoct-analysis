@@ -1,35 +1,12 @@
 import { PyodideInterface } from './usePyodide'
 import { generateExcelFile } from './excelGenerator'
-
-export interface AnalysisResult {
-  summary: {
-    total_calls: number
-    unique_exams: number
-    categories_found: number
-    bugs_detected: number
-  }
-  statistics: Array<{
-    category: string
-    total: number
-    exam_not_found: number
-    exam_not_authorized: number
-    all_exams: string
-    exams: Array<{
-      name: string
-      total: number
-      not_found: number
-      not_authorized: number
-      ids: string[]
-    }>
-  }>
-  excel_file_base64: string
-}
+import { AnalysisResult } from './types'
 
 export async function analyzeWithPyodide(
   pyodide: PyodideInterface,
   notFoundFile: File,
   notAuthorizedFile: File,
-  referenceFile: File
+  appointmentCreatedFile: File
 ): Promise<AnalysisResult> {
   try {
     console.log('📊 Début de l\'analyse avec Pyodide...')
@@ -37,11 +14,11 @@ export async function analyzeWithPyodide(
     // Charger les fichiers dans le système de fichiers virtuel de Pyodide
     const notFoundBuffer = await notFoundFile.arrayBuffer()
     const notAuthorizedBuffer = await notAuthorizedFile.arrayBuffer()
-    const referenceBuffer = await referenceFile.arrayBuffer()
+    const appointmentCreatedBuffer = await appointmentCreatedFile.arrayBuffer()
 
     pyodide.FS.writeFile('not_found.xlsx', new Uint8Array(notFoundBuffer))
     pyodide.FS.writeFile('not_authorized.xlsx', new Uint8Array(notAuthorizedBuffer))
-    pyodide.FS.writeFile('reference.csv', new Uint8Array(referenceBuffer))
+    pyodide.FS.writeFile('appointment_created.xlsx', new Uint8Array(appointmentCreatedBuffer))
 
     console.log('✅ Fichiers chargés dans Pyodide')
 
@@ -50,6 +27,7 @@ export async function analyzeWithPyodide(
 import pandas as pd
 import json
 import re
+import unicodedata
 
 # Catégories d'examens
 CATEGORIES = {
@@ -102,71 +80,109 @@ def normalize_exam_name(exam_str):
     # Convertir en minuscules
     normalized = str(exam_str).lower()
 
-    # Supprimer les accents
-    accents = {
-        'à': 'a', 'â': 'a', 'ä': 'a', 'á': 'a', 'ã': 'a', 'å': 'a',
-        'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
-        'ì': 'i', 'í': 'i', 'î': 'i', 'ï': 'i',
-        'ò': 'o', 'ó': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o',
-        'ù': 'u', 'ú': 'u', 'û': 'u', 'ü': 'u',
-        'ý': 'y', 'ÿ': 'y',
-        'ñ': 'n', 'ç': 'c'
-    }
+    # Supprimer les accents avec unicodedata (méthode standard)
+    nfd = unicodedata.normalize('NFD', normalized)
+    without_accents = ''.join(char for char in nfd if unicodedata.category(char) != 'Mn')
 
-    for accent, letter in accents.items():
-        normalized = normalized.replace(accent, letter)
-
-    return normalized.strip()
+    return without_accents.strip()
 
 # Charger les fichiers
 print("📊 Chargement des données...")
 df_not_found = pd.read_excel('not_found.xlsx')
 df_not_authorized = pd.read_excel('not_authorized.xlsx')
+df_appointment_created = pd.read_excel('appointment_created.xlsx')
 
-# Filtrer uniquement les "Transféré"
-df_not_found = df_not_found[df_not_found['Statut'] == 'Transféré'].copy()
-df_not_authorized = df_not_authorized[df_not_authorized['Statut'] == 'Transféré'].copy()
+# Filtrer les "Transféré" et "Décroché" UNIQUEMENT pour not_found et not_authorized
+df_not_found = df_not_found[df_not_found['Statut'].isin(['Transféré', 'Décroché'])].copy()
+df_not_authorized = df_not_authorized[df_not_authorized['Statut'].isin(['Transféré', 'Décroché'])].copy()
 
-print(f"Not Found (Transféré): {len(df_not_found)} appels")
-print(f"Not Authorized (Transféré): {len(df_not_authorized)} appels")
+# PAS DE FILTRE pour appointment_created - on prend TOUTES les lignes pour le calcul de durée
+print(f"Not Found (Transféré + Décroché): {len(df_not_found)} appels")
+print(f"Not Authorized (Transféré + Décroché): {len(df_not_authorized)} appels")
+print(f"Appointment Created (TOUTES les lignes): {len(df_appointment_created)} appels")
+
+# Vérifier si la colonne Durée existe et la convertir en nombre
+# IMPORTANT: La durée est extraite depuis TOUTES les lignes de appointment_created
+for df in [df_not_found, df_not_authorized]:
+    df['Durée'] = 0
+
+if 'Durée' in df_appointment_created.columns:
+    df_appointment_created['Durée'] = pd.to_numeric(df_appointment_created['Durée'], errors='coerce').fillna(0)
+else:
+    df_appointment_created['Durée'] = 0
+
+# Créer un dictionnaire de mapping Id -> Durée depuis TOUTES les lignes de appointment_created
+duration_map = {}
+for idx, row in df_appointment_created.iterrows():
+    call_id = str(row.get('Id', ''))
+    if call_id:
+        duration_map[call_id] = row.get('Durée', 0)
+
+print(f"Durées extraites pour {len(duration_map)} appels uniques")
 
 # Ajouter les tags
 df_not_found['tag_type'] = 'exam_not_found'
 df_not_authorized['tag_type'] = 'exam_not_authorized'
 
-# Combiner
+# Combiner UNIQUEMENT not_found et not_authorized pour l'analyse des examens
 df_all = pd.concat([df_not_found, df_not_authorized], ignore_index=True)
 
 print("🔍 Analyse des examens...")
 
-# Créer la liste détaillée
-detailed_results = []
+# Créer deux listes détaillées séparées : une pour les problèmes, une pour les succès
+detailed_results_problems = []
+detailed_results_appointments = []
 
+# Analyser les problèmes (not_found et not_authorized)
 for idx, row in df_all.iterrows():
     exams = parse_exam_identified(row['Examen Identifié'])
+    # Récupérer la durée depuis duration_map basé sur l'Id de l'appel
+    call_id = str(row.get('Id', ''))
+    duration = duration_map.get(call_id, 0)
 
     for exam in exams:
         category = categorize_exam(exam)
 
-        detailed_results.append({
+        detailed_results_problems.append({
             'Examen Identifié': exam,
             'Examen Normalisé': normalize_exam_name(exam),
             'Catégorie': category,
             'Tag': row['tag_type'],
             'Id Appel': row['Id'],
-            'Id Externe': row['Id Externe']
+            'Id Externe': row['Id Externe'],
+            'Durée': duration
         })
 
-df_detailed = pd.DataFrame(detailed_results)
+# Analyser les rendez-vous créés (appointment_created)
+for idx, row in df_appointment_created.iterrows():
+    exams = parse_exam_identified(row['Examen Identifié'])
+    call_id = str(row.get('Id', ''))
+    duration = row.get('Durée', 0)  # Durée directe du fichier appointment_created
+
+    for exam in exams:
+        category = categorize_exam(exam)
+
+        detailed_results_appointments.append({
+            'Examen Identifié': exam,
+            'Examen Normalisé': normalize_exam_name(exam),
+            'Catégorie': category,
+            'Tag': 'appointment_created',
+            'Id Appel': row['Id'],
+            'Id Externe': row['Id Externe'],
+            'Durée': duration
+        })
+
+df_detailed_problems = pd.DataFrame(detailed_results_problems)
+df_detailed_appointments = pd.DataFrame(detailed_results_appointments)
 
 print("📈 Génération des statistiques...")
 
-# Statistiques
-stats_data = []
+# Générer les statistiques pour LES PROBLÈMES (not_found et not_authorized)
+problems_stats = []
 valid_categories = list(CATEGORIES.keys()) + ['INTITULES INCOMPRIS', 'AUTRE', 'INCONNU']
 
 for category in valid_categories:
-    df_cat = df_detailed[df_detailed['Catégorie'] == category]
+    df_cat = df_detailed_problems[df_detailed_problems['Catégorie'] == category]
 
     total = len(df_cat)
     if total == 0:
@@ -174,6 +190,7 @@ for category in valid_categories:
 
     not_found = len(df_cat[df_cat['Tag'] == 'exam_not_found'])
     not_authorized = len(df_cat[df_cat['Tag'] == 'exam_not_authorized'])
+    total_duration = int(df_cat['Durée'].sum())
 
     # Regrouper les examens par nom normalisé (ignorer casse et accents)
     exams_list = []
@@ -190,6 +207,7 @@ for category in valid_categories:
         count = len(df_exam_group)
         nf_count = len(df_exam_group[df_exam_group['Tag'] == 'exam_not_found'])
         na_count = len(df_exam_group[df_exam_group['Tag'] == 'exam_not_authorized'])
+        exam_duration = int(df_exam_group['Durée'].sum())
 
         ids = df_exam_group['Id Externe'].dropna().astype(str).tolist()
 
@@ -198,7 +216,8 @@ for category in valid_categories:
             'total': int(count),
             'not_found': int(nf_count),
             'not_authorized': int(na_count),
-            'ids': ids
+            'ids': ids,
+            'duration': exam_duration
         })
 
         ids_str = '|'.join(ids)
@@ -210,25 +229,82 @@ for category in valid_categories:
 
     all_exams_str = '\\n'.join(exams_with_ids)
 
-    stats_data.append({
+    problems_stats.append({
         'category': category,
         'total': int(total),
         'exam_not_found': int(not_found),
         'exam_not_authorized': int(not_authorized),
+        'total_duration': total_duration,
         'all_exams': all_exams_str,
+        'exams': exams_list
+    })
+
+# Générer les statistiques pour LES RENDEZ-VOUS CRÉÉS (appointment_created)
+appointments_stats = []
+
+for category in valid_categories:
+    df_cat = df_detailed_appointments[df_detailed_appointments['Catégorie'] == category]
+
+    total = len(df_cat)
+    if total == 0:
+        continue
+
+    total_duration = int(df_cat['Durée'].sum())
+    average_duration = int(df_cat['Durée'].mean()) if total > 0 else 0
+
+    # Regrouper les examens par nom normalisé
+    exams_list = []
+
+    for normalized_name, df_exam_group in df_cat.groupby('Examen Normalisé'):
+        if not normalized_name:
+            continue
+
+        original_name = df_exam_group['Examen Identifié'].mode()[0]
+        count = len(df_exam_group)
+        exam_duration = int(df_exam_group['Durée'].sum())
+        exam_avg_duration = int(df_exam_group['Durée'].mean()) if count > 0 else 0
+        ids = df_exam_group['Id Externe'].dropna().astype(str).tolist()
+
+        exams_list.append({
+            'name': original_name,
+            'total': int(count),
+            'not_found': 0,  # Pas de not_found pour les succès
+            'not_authorized': 0,  # Pas de not_authorized pour les succès
+            'ids': ids,
+            'duration': exam_duration,
+            'average_duration': exam_avg_duration
+        })
+
+    # Trier par total décroissant
+    exams_list.sort(key=lambda x: x['total'], reverse=True)
+
+    appointments_stats.append({
+        'category': category,
+        'total': int(total),
+        'exam_not_found': 0,
+        'exam_not_authorized': 0,
+        'total_duration': total_duration,
+        'average_duration': average_duration,
+        'all_exams': '',
         'exams': exams_list
     })
 
 # Calculer le résumé
 total_calls = len(df_not_found) + len(df_not_authorized)
-unique_exams = len(df_detailed['Examen Normalisé'].unique())  # Compter les examens normalisés uniques
-bugs_detected = len(df_detailed[df_detailed['Catégorie'] == 'INTITULES INCOMPRIS'])
+unique_exams = len(df_detailed_problems['Examen Normalisé'].unique())
+bugs_detected = len(df_detailed_problems[df_detailed_problems['Catégorie'] == 'INTITULES INCOMPRIS'])
+# Calculer la durée totale UNIQUEMENT depuis appointment_created
+total_duration = int(df_appointment_created['Durée'].sum())
+# Calculer le nombre de rendez-vous créés (nombre de lignes dans appointment_created)
+appointments_created = len(df_appointment_created)
 
 summary = {
     'total_calls': int(total_calls),
     'unique_exams': int(unique_exams),
-    'categories_found': len(stats_data),
-    'bugs_detected': int(bugs_detected)
+    'categories_found': len(problems_stats),
+    'bugs_detected': int(bugs_detected),
+    'total_duration': total_duration,
+    'appointments_created': int(appointments_created)
 }
 
 print("✅ Analyse terminée !")
@@ -236,7 +312,8 @@ print("✅ Analyse terminée !")
 # Résultat JSON (Excel sera généré côté JavaScript)
 result = {
     'summary': summary,
-    'statistics': stats_data,
+    'problems_statistics': problems_stats,
+    'appointments_statistics': appointments_stats
 }
 
 json.dumps(result)
@@ -247,7 +324,7 @@ json.dumps(result)
     const result = JSON.parse(resultJson)
 
     console.log('📊 Génération du fichier Excel avec JavaScript...')
-    const excelBase64 = generateExcelFile(result.statistics)
+    const excelBase64 = generateExcelFile(result.problems_statistics, result.appointments_statistics, result.summary)
 
     const finalResult: AnalysisResult = {
       ...result,

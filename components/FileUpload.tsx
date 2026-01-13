@@ -5,6 +5,7 @@ import { Upload, FileSpreadsheet, X, CheckCircle } from 'lucide-react'
 import { AnalysisResult } from '@/lib/types'
 import { usePyodide } from '@/lib/usePyodide'
 import { analyzeWithPyodide } from '@/lib/pyodideAnalyzer'
+import * as XLSX from 'xlsx'
 
 interface FileUploadProps {
   onAnalysisComplete: (result: AnalysisResult) => void
@@ -15,7 +16,7 @@ interface FileUploadProps {
 interface UploadedFile {
   name: string
   file: File
-  type: 'not_found' | 'not_authorized'
+  type: 'not_found' | 'not_authorized' | 'appointment_created'
 }
 
 export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnalysisError }: FileUploadProps) {
@@ -37,7 +38,7 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    
+
     const droppedFiles = Array.from(e.dataTransfer.files)
     processFiles(droppedFiles)
   }, [])
@@ -49,28 +50,57 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
     }
   }
 
-  const processFiles = (newFiles: File[]) => {
-    const processedFiles: UploadedFile[] = []
+  const detectFileType = async (file: File): Promise<'not_found' | 'not_authorized' | 'appointment_created' | null> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+      const firstSheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[firstSheetName]
+      const data: any[] = XLSX.utils.sheet_to_json(worksheet)
 
-    newFiles.forEach(file => {
-      const name = file.name.toLowerCase()
-      let type: 'not_found' | 'not_authorized' | null = null
-
-      if (name.includes('not_found') || name.includes('not found')) {
-        type = 'not_found'
-      } else if (name.includes('not_authorized') || name.includes('not authorized')) {
-        type = 'not_authorized'
+      if (data.length === 0) {
+        return null
       }
+
+      // Vérifier la colonne Tag dans la première ligne
+      const firstRow = data[0]
+      if (firstRow.Tag === 'exam_not_found') {
+        return 'not_found'
+      } else if (firstRow.Tag === 'exam_not_authorized') {
+        return 'not_authorized'
+      } else if (firstRow.Tag === 'appointment_created') {
+        return 'appointment_created'
+      }
+
+      return null
+    } catch (err) {
+      console.error('Erreur lors de la détection du type de fichier:', err)
+      return null
+    }
+  }
+
+  const processFiles = async (newFiles: File[]) => {
+    setError(null)
+
+    for (const file of newFiles) {
+      // Vérifier que c'est un fichier Excel
+      const name = file.name.toLowerCase()
+      if (!name.endsWith('.xlsx') && !name.endsWith('.xls')) {
+        setError('Seuls les fichiers Excel (.xlsx, .xls) sont acceptés')
+        continue
+      }
+
+      // Détecter automatiquement le type via la colonne Tag
+      const type = await detectFileType(file)
 
       if (type) {
         // Remplacer si déjà existant
         setFiles(prev => prev.filter(f => f.type !== type))
-        processedFiles.push({ name: file.name, file, type })
+        setFiles(prev => [...prev, { name: file.name, file, type }])
+      } else {
+        setError('Impossible de détecter le type de fichier. Vérifiez que la colonne "Tag" contient "exam_not_found", "exam_not_authorized" ou "appointment_created"')
       }
-    })
-
-    setFiles(prev => [...prev, ...processedFiles])
-    setError(null)
+    }
   }
 
   const removeFile = (type: string) => {
@@ -78,8 +108,8 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
   }
 
   const handleAnalyze = async () => {
-    if (files.length !== 2) {
-      setError('Veuillez uploader les 2 fichiers requis')
+    if (files.length !== 3) {
+      setError('Veuillez uploader les 3 fichiers requis')
       return
     }
 
@@ -99,23 +129,19 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
 
       const notFoundFile = files.find(f => f.type === 'not_found')?.file
       const notAuthorizedFile = files.find(f => f.type === 'not_authorized')?.file
+      const appointmentCreatedFile = files.find(f => f.type === 'appointment_created')?.file
 
-      if (!notFoundFile || !notAuthorizedFile) {
+      if (!notFoundFile || !notAuthorizedFile || !appointmentCreatedFile) {
         setError('Fichiers manquants')
         return
       }
-
-      // Créer un fichier reference.csv minimal (vide mais valide)
-      const referenceContent = 'exam_name,category\n'
-      const referenceBlob = new Blob([referenceContent], { type: 'text/csv' })
-      const referenceFile = new File([referenceBlob], 'reference.csv', { type: 'text/csv' })
 
       console.log('🚀 Lancement de l\'analyse avec Pyodide...')
       const result = await analyzeWithPyodide(
         pyodide,
         notFoundFile,
         notAuthorizedFile,
-        referenceFile
+        appointmentCreatedFile
       )
 
       onAnalysisComplete(result)
@@ -130,12 +156,13 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
     switch (type) {
       case 'not_found': return 'Examens non trouvés'
       case 'not_authorized': return 'Examens non autorisés'
+      case 'appointment_created': return 'Rendez-vous créés'
       case 'reference': return 'Examens de référence'
       default: return type
     }
   }
 
-  const hasAllFiles = files.length === 2
+  const hasAllFiles = files.length === 3
 
   return (
     <div className="space-y-4">
@@ -239,8 +266,8 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
         {pyodideLoading
           ? '🐍 Chargement de Python...'
           : hasAllFiles
-            ? '🚀 Lancer l\'analyse (100% local)'
-            : '⏳ En attente des 2 fichiers...'
+            ? '🚀 Lancer l\'analyse'
+            : '⏳ En attente des 3 fichiers...'
         }
       </button>
     </div>
