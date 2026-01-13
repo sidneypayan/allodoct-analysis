@@ -4,21 +4,28 @@ import { AnalysisResult } from './types'
 
 export async function analyzeWithPyodide(
   pyodide: PyodideInterface,
-  notFoundFile: File,
-  notAuthorizedFile: File,
-  appointmentCreatedFile: File
+  notFoundFile?: File,
+  notAuthorizedFile?: File,
+  appointmentCreatedFile?: File
 ): Promise<AnalysisResult> {
   try {
     console.log('📊 Début de l\'analyse avec Pyodide...')
 
     // Charger les fichiers dans le système de fichiers virtuel de Pyodide
-    const notFoundBuffer = await notFoundFile.arrayBuffer()
-    const notAuthorizedBuffer = await notAuthorizedFile.arrayBuffer()
-    const appointmentCreatedBuffer = await appointmentCreatedFile.arrayBuffer()
+    if (notFoundFile) {
+      const notFoundBuffer = await notFoundFile.arrayBuffer()
+      pyodide.FS.writeFile('not_found.xlsx', new Uint8Array(notFoundBuffer))
+    }
 
-    pyodide.FS.writeFile('not_found.xlsx', new Uint8Array(notFoundBuffer))
-    pyodide.FS.writeFile('not_authorized.xlsx', new Uint8Array(notAuthorizedBuffer))
-    pyodide.FS.writeFile('appointment_created.xlsx', new Uint8Array(appointmentCreatedBuffer))
+    if (notAuthorizedFile) {
+      const notAuthorizedBuffer = await notAuthorizedFile.arrayBuffer()
+      pyodide.FS.writeFile('not_authorized.xlsx', new Uint8Array(notAuthorizedBuffer))
+    }
+
+    if (appointmentCreatedFile) {
+      const appointmentCreatedBuffer = await appointmentCreatedFile.arrayBuffer()
+      pyodide.FS.writeFile('appointment_created.xlsx', new Uint8Array(appointmentCreatedBuffer))
+    }
 
     console.log('✅ Fichiers chargés dans Pyodide')
 
@@ -88,13 +95,33 @@ def normalize_exam_name(exam_str):
 
 # Charger les fichiers
 print("📊 Chargement des données...")
-df_not_found = pd.read_excel('not_found.xlsx')
-df_not_authorized = pd.read_excel('not_authorized.xlsx')
-df_appointment_created = pd.read_excel('appointment_created.xlsx')
+import os
 
-# Filtrer les "Transféré" et "Décroché" UNIQUEMENT pour not_found et not_authorized
-df_not_found = df_not_found[df_not_found['Statut'].isin(['Transféré', 'Décroché'])].copy()
-df_not_authorized = df_not_authorized[df_not_authorized['Statut'].isin(['Transféré', 'Décroché'])].copy()
+# Créer des DataFrames vides avec les colonnes nécessaires
+empty_columns = ['Id', 'Id Externe', 'Statut', 'Tag', 'Examen Identifié', 'Durée']
+
+# Charger not_found ou créer un DataFrame vide
+if os.path.exists('not_found.xlsx'):
+    df_not_found = pd.read_excel('not_found.xlsx')
+    df_not_found = df_not_found[df_not_found['Statut'].isin(['Transféré', 'Décroché'])].copy()
+else:
+    print("⚠️ Fichier not_found.xlsx absent - création d'un DataFrame vide")
+    df_not_found = pd.DataFrame(columns=empty_columns)
+
+# Charger not_authorized ou créer un DataFrame vide
+if os.path.exists('not_authorized.xlsx'):
+    df_not_authorized = pd.read_excel('not_authorized.xlsx')
+    df_not_authorized = df_not_authorized[df_not_authorized['Statut'].isin(['Transféré', 'Décroché'])].copy()
+else:
+    print("⚠️ Fichier not_authorized.xlsx absent - création d'un DataFrame vide")
+    df_not_authorized = pd.DataFrame(columns=empty_columns)
+
+# Charger appointment_created ou créer un DataFrame vide
+if os.path.exists('appointment_created.xlsx'):
+    df_appointment_created = pd.read_excel('appointment_created.xlsx')
+else:
+    print("⚠️ Fichier appointment_created.xlsx absent - création d'un DataFrame vide")
+    df_appointment_created = pd.DataFrame(columns=empty_columns)
 
 # PAS DE FILTRE pour appointment_created - on prend TOUTES les lignes pour le calcul de durée
 print(f"Not Found (Transféré + Décroché): {len(df_not_found)} appels")

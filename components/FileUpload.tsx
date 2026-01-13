@@ -108,8 +108,8 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
   }
 
   const handleAnalyze = async () => {
-    if (files.length !== 3) {
-      setError('Veuillez uploader les 3 fichiers requis')
+    if (files.length === 0) {
+      setError('Veuillez uploader au moins un fichier')
       return
     }
 
@@ -130,11 +130,6 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
       const notFoundFile = files.find(f => f.type === 'not_found')?.file
       const notAuthorizedFile = files.find(f => f.type === 'not_authorized')?.file
       const appointmentCreatedFile = files.find(f => f.type === 'appointment_created')?.file
-
-      if (!notFoundFile || !notAuthorizedFile || !appointmentCreatedFile) {
-        setError('Fichiers manquants')
-        return
-      }
 
       console.log('🚀 Lancement de l\'analyse avec Pyodide...')
       const result = await analyzeWithPyodide(
@@ -162,7 +157,7 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
     }
   }
 
-  const hasAllFiles = files.length === 3
+  const hasAtLeastOneFile = files.length > 0
 
   return (
     <div className="space-y-4">
@@ -254,10 +249,10 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
       {/* Analyze Button */}
       <button
         onClick={handleAnalyze}
-        disabled={!hasAllFiles || pyodideLoading || !!pyodideError}
+        disabled={!hasAtLeastOneFile || pyodideLoading || !!pyodideError}
         className={`
           w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all
-          ${hasAllFiles && !pyodideLoading && !pyodideError
+          ${hasAtLeastOneFile && !pyodideLoading && !pyodideError
             ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }
@@ -265,9 +260,9 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
       >
         {pyodideLoading
           ? '🐍 Chargement de Python...'
-          : hasAllFiles
-            ? '🚀 Lancer l\'analyse'
-            : '⏳ En attente des 3 fichiers...'
+          : hasAtLeastOneFile
+            ? `🚀 Lancer l'analyse (${files.length} fichier${files.length > 1 ? 's' : ''})`
+            : '⏳ Veuillez ajouter au moins un fichier...'
         }
       </button>
     </div>
