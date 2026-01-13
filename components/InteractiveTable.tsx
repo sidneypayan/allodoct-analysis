@@ -128,19 +128,21 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                   </th>
                 </>
               )}
-              <th
-                className={`px-4 py-4 text-center font-semibold cursor-pointer ${isAppointments ? 'hover:bg-green-800' : 'hover:bg-blue-800'} transition-colors text-sm`}
-                onClick={() => handleSort('total_duration')}
-              >
-                Durée totale <SortIcon field="total_duration" />
-              </th>
               {isAppointments && (
-                <th
-                  className="px-4 py-4 text-center font-semibold cursor-pointer hover:bg-green-800 transition-colors text-sm"
-                  onClick={() => handleSort('average_duration')}
-                >
-                  Durée moyenne <SortIcon field="average_duration" />
-                </th>
+                <>
+                  <th
+                    className="px-4 py-4 text-center font-semibold cursor-pointer hover:bg-green-800 transition-colors text-sm"
+                    onClick={() => handleSort('total_duration')}
+                  >
+                    Durée totale <SortIcon field="total_duration" />
+                  </th>
+                  <th
+                    className="px-4 py-4 text-center font-semibold cursor-pointer hover:bg-green-800 transition-colors text-sm"
+                    onClick={() => handleSort('average_duration')}
+                  >
+                    Durée moyenne <SortIcon field="average_duration" />
+                  </th>
+                </>
               )}
             </tr>
           </thead>
@@ -176,25 +178,23 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                       </td>
                     </>
                   )}
-                  <td className={`px-4 py-4 text-center ${isAppointments ? 'text-green-600' : 'text-blue-600'} font-medium`}>
-                    {formatDuration(stat.total_duration || 0)}
-                  </td>
                   {isAppointments && (
-                    <td className="px-4 py-4 text-center text-green-700 font-medium">
-                      {formatDuration(stat.average_duration || 0)}
-                    </td>
+                    <>
+                      <td className="px-4 py-4 text-center text-green-600 font-medium">
+                        {formatDuration(stat.total_duration || 0)}
+                      </td>
+                      <td className="px-4 py-4 text-center text-green-700 font-medium">
+                        {formatDuration(stat.average_duration || 0)}
+                      </td>
+                    </>
                   )}
                 </tr>
 
                 {/* Ligne développée avec TOUS les examens */}
                 {expandedRows.has(stat.category) && (
                   <tr className={isAppointments ? 'bg-green-100' : 'bg-blue-100'}>
-                    <td colSpan={isAppointments ? 5 : 6} className="px-4 py-4">
-                      <div className="bg-white rounded-lg p-4 shadow-inner max-h-96 overflow-y-auto">
-                        <h4 className="font-semibold text-gray-900 sticky top-0 bg-white border-b border-gray-200 pb-2 mb-2 -mt-4 pt-4">
-                          📋 Tous les examens de la catégorie {stat.category} ({stat.total} total)
-                        </h4>
-
+                    <td colSpan={5} className="p-0">
+                      <div className="bg-white overflow-y-auto max-h-[600px]">
                         {/* Tableau des examens avec colonnes alignées */}
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
@@ -209,9 +209,11 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                                     <th className="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap w-32">Non autorisés</th>
                                   </>
                                 )}
-                                <th className="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap w-32">Durée totale</th>
                                 {isAppointments && (
-                                  <th className="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap w-32">Durée moyenne</th>
+                                  <>
+                                    <th className="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap w-32">Durée totale</th>
+                                    <th className="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap w-32">Durée moyenne</th>
+                                  </>
                                 )}
                               </tr>
                             </thead>
@@ -244,13 +246,15 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                                       </td>
                                     </>
                                   )}
-                                  <td className={`px-3 py-2 text-center font-medium ${isAppointments ? 'text-green-600' : 'text-blue-600'}`}>
-                                    {formatDuration(exam.duration || 0)}
-                                  </td>
                                   {isAppointments && (
-                                    <td className="px-3 py-2 text-center font-medium text-green-700">
-                                      {formatDuration(exam.average_duration || 0)}
-                                    </td>
+                                    <>
+                                      <td className="px-3 py-2 text-center font-medium text-green-600">
+                                        {formatDuration(exam.duration || 0)}
+                                      </td>
+                                      <td className="px-3 py-2 text-center font-medium text-green-700">
+                                        {formatDuration(exam.average_duration || 0)}
+                                      </td>
+                                    </>
                                   )}
                                 </tr>
                               ))}

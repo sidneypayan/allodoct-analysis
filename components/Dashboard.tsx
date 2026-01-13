@@ -166,14 +166,6 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
               </div>
               <p className="text-3xl font-bold text-gray-900">{summary.bugs_detected}</p>
             </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-gray-600 text-sm font-medium">Catégories</p>
-                <CheckCircle className="w-5 h-5 text-green-500" />
-              </div>
-              <p className="text-3xl font-bold text-gray-900">{summary.categories_found}</p>
-            </div>
           </>
         ) : (
           <>
