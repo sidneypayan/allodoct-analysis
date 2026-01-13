@@ -7,6 +7,7 @@ interface ExamData {
   not_authorized: number
   ids: string[]
   duration: number
+  average_duration?: number
 }
 
 interface StatData {
@@ -15,6 +16,7 @@ interface StatData {
   exam_not_found: number
   exam_not_authorized: number
   total_duration: number
+  average_duration?: number
   all_exams: string
   exams: ExamData[]
 }
