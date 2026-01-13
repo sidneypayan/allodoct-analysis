@@ -31,7 +31,7 @@ function formatDuration(seconds: number): string {
 
 export default function Dashboard({ data, onReset }: DashboardProps) {
   const { summary, problems_statistics, appointments_statistics, excel_file_base64 } = data
-  const [activeTab, setActiveTab] = useState<'problems' | 'appointments'>('problems')
+  const [activeTab, setActiveTab] = useState<'problems' | 'appointments'>('appointments')
 
   // Préparer les données pour les graphiques - PROBLÈMES
   const problemsCategoryData = problems_statistics
@@ -117,16 +117,6 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="flex border-b">
           <button
-            onClick={() => setActiveTab('problems')}
-            className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
-              activeTab === 'problems'
-                ? 'bg-red-50 text-red-700 border-b-2 border-red-500'
-                : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            Problèmes (exam_not_found / exam_not_authorized)
-          </button>
-          <button
             onClick={() => setActiveTab('appointments')}
             className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
               activeTab === 'appointments'
@@ -134,7 +124,17 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            Succès (Rendez-vous créés)
+            Rendez-vous créés
+          </button>
+          <button
+            onClick={() => setActiveTab('problems')}
+            className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
+              activeTab === 'problems'
+                ? 'bg-red-50 text-red-700 border-b-2 border-red-500'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Rendez-vous non créés
           </button>
         </div>
       </div>
@@ -221,10 +221,48 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                       <Pie
                         data={problemsCategoryData}
                         cx="50%"
-                        cy="40%"
-                        labelLine={true}
-                        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                        cy="50%"
+                        innerRadius={70}
                         outerRadius={110}
+                        labelLine={(props) => {
+                          const { percent } = props
+                          const pct = percent * 100
+                          // Ne pas afficher la ligne si < 1%
+                          if (pct < 1) return null
+
+                          return (
+                            <path
+                              d={props.points ? `M${props.points[0].x},${props.points[0].y}L${props.points[1].x},${props.points[1].y}` : ''}
+                              stroke="#9ca3af"
+                              strokeWidth={1}
+                              fill="none"
+                            />
+                          )
+                        }}
+                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
+                          const pct = percent * 100
+                          // Ne pas afficher si < 1%
+                          if (pct < 1) return null
+
+                          const RADIAN = Math.PI / 180
+                          const radius = outerRadius + 20
+                          const x = cx + radius * Math.cos(-midAngle * RADIAN)
+                          const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+                          return (
+                            <text
+                              x={x}
+                              y={y}
+                              fill="#374151"
+                              textAnchor={x > cx ? 'start' : 'end'}
+                              dominantBaseline="central"
+                              fontSize="13"
+                              fontWeight="600"
+                            >
+                              {`${pct.toFixed(0)}%`}
+                            </text>
+                          )
+                        }}
                         fill="#8884d8"
                         dataKey="value"
                       >
@@ -237,6 +275,11 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         verticalAlign="bottom"
                         height={60}
                         wrapperStyle={{ fontSize: '12px' }}
+                        formatter={(value, entry) => {
+                          const total = problemsCategoryData.reduce((sum, item) => sum + item.value, 0)
+                          const percent = ((entry.payload.value / total) * 100).toFixed(1)
+                          return `${value} (${entry.payload.value} - ${percent}%)`
+                        }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -252,10 +295,48 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                       <Pie
                         data={tagData}
                         cx="50%"
-                        cy="40%"
-                        labelLine={true}
-                        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                        cy="50%"
+                        innerRadius={70}
                         outerRadius={110}
+                        labelLine={(props) => {
+                          const { percent } = props
+                          const pct = percent * 100
+                          // Ne pas afficher la ligne si < 1%
+                          if (pct < 1) return null
+
+                          return (
+                            <path
+                              d={props.points ? `M${props.points[0].x},${props.points[0].y}L${props.points[1].x},${props.points[1].y}` : ''}
+                              stroke="#9ca3af"
+                              strokeWidth={1}
+                              fill="none"
+                            />
+                          )
+                        }}
+                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                          const pct = percent * 100
+                          // Ne pas afficher si < 1%
+                          if (pct < 1) return null
+
+                          const RADIAN = Math.PI / 180
+                          const radius = outerRadius + 20
+                          const x = cx + radius * Math.cos(-midAngle * RADIAN)
+                          const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+                          return (
+                            <text
+                              x={x}
+                              y={y}
+                              fill="#374151"
+                              textAnchor={x > cx ? 'start' : 'end'}
+                              dominantBaseline="central"
+                              fontSize="13"
+                              fontWeight="600"
+                            >
+                              {`${pct.toFixed(0)}%`}
+                            </text>
+                          )
+                        }}
                         fill="#8884d8"
                         dataKey="value"
                       >
@@ -267,6 +348,11 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         verticalAlign="bottom"
                         height={60}
                         wrapperStyle={{ fontSize: '12px' }}
+                        formatter={(value, entry) => {
+                          const total = tagData.reduce((sum, item) => sum + item.value, 0)
+                          const percent = ((entry.payload.value / total) * 100).toFixed(1)
+                          return `${value} (${entry.payload.value} - ${percent}%)`
+                        }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -290,10 +376,48 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                       <Pie
                         data={appointmentsCategoryData}
                         cx="50%"
-                        cy="40%"
-                        labelLine={true}
-                        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                        cy="50%"
+                        innerRadius={70}
                         outerRadius={110}
+                        labelLine={(props) => {
+                          const { percent } = props
+                          const pct = percent * 100
+                          // Ne pas afficher la ligne si < 1%
+                          if (pct < 1) return null
+
+                          return (
+                            <path
+                              d={props.points ? `M${props.points[0].x},${props.points[0].y}L${props.points[1].x},${props.points[1].y}` : ''}
+                              stroke="#9ca3af"
+                              strokeWidth={1}
+                              fill="none"
+                            />
+                          )
+                        }}
+                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                          const pct = percent * 100
+                          // Ne pas afficher si < 1%
+                          if (pct < 1) return null
+
+                          const RADIAN = Math.PI / 180
+                          const radius = outerRadius + 20
+                          const x = cx + radius * Math.cos(-midAngle * RADIAN)
+                          const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+                          return (
+                            <text
+                              x={x}
+                              y={y}
+                              fill="#374151"
+                              textAnchor={x > cx ? 'start' : 'end'}
+                              dominantBaseline="central"
+                              fontSize="13"
+                              fontWeight="600"
+                            >
+                              {`${pct.toFixed(0)}%`}
+                            </text>
+                          )
+                        }}
                         fill="#8884d8"
                         dataKey="value"
                       >
@@ -306,6 +430,11 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         verticalAlign="bottom"
                         height={60}
                         wrapperStyle={{ fontSize: '12px' }}
+                        formatter={(value, entry) => {
+                          const total = appointmentsCategoryData.reduce((sum, item) => sum + item.value, 0)
+                          const percent = ((entry.payload.value / total) * 100).toFixed(1)
+                          return `${value} (${entry.payload.value} - ${percent}%)`
+                        }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
