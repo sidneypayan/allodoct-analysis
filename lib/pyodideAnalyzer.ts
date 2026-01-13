@@ -161,46 +161,57 @@ detailed_results_problems = []
 detailed_results_appointments = []
 
 # Analyser les problèmes (not_found et not_authorized)
+# On compte les appels, pas les examens individuels
 for idx, row in df_all.iterrows():
-    exams = parse_exam_identified(row['Examen Identifié'])
     # Récupérer la durée depuis duration_map basé sur l'Id de l'appel
     call_id = str(row.get('Id', ''))
     duration = duration_map.get(call_id, 0)
 
-    for exam in exams:
-        category = categorize_exam(exam)
+    # Prendre le premier examen pour déterminer la catégorie de l'appel
+    exams = parse_exam_identified(row['Examen Identifié'])
+    first_exam = exams[0] if exams else ''
+    category = categorize_exam(first_exam)
 
-        detailed_results_problems.append({
-            'Examen Identifié': exam,
-            'Examen Normalisé': normalize_exam_name(exam),
-            'Catégorie': category,
-            'Tag': row['tag_type'],
-            'Id Appel': row['Id'],
-            'Id Externe': row['Id Externe'],
-            'Durée': duration
-        })
+    detailed_results_problems.append({
+        'Examen Identifié': first_exam,
+        'Examen Normalisé': normalize_exam_name(first_exam),
+        'Catégorie': category,
+        'Tag': row['tag_type'],
+        'Id Appel': row['Id'],
+        'Id Externe': row['Id Externe'],
+        'Durée': duration
+    })
 
 # Analyser les rendez-vous créés (appointment_created)
+# On compte les appels, pas les examens individuels
 for idx, row in df_appointment_created.iterrows():
-    exams = parse_exam_identified(row['Examen Identifié'])
     call_id = str(row.get('Id', ''))
     duration = row.get('Durée', 0)  # Durée directe du fichier appointment_created
 
-    for exam in exams:
-        category = categorize_exam(exam)
+    # Prendre le premier examen pour déterminer la catégorie de l'appel
+    exams = parse_exam_identified(row['Examen Identifié'])
+    first_exam = exams[0] if exams else ''
+    category = categorize_exam(first_exam)
 
-        detailed_results_appointments.append({
-            'Examen Identifié': exam,
-            'Examen Normalisé': normalize_exam_name(exam),
-            'Catégorie': category,
-            'Tag': 'appointment_created',
-            'Id Appel': row['Id'],
-            'Id Externe': row['Id Externe'],
-            'Durée': duration
-        })
+    detailed_results_appointments.append({
+        'Examen Identifié': first_exam,
+        'Examen Normalisé': normalize_exam_name(first_exam),
+        'Catégorie': category,
+        'Tag': 'appointment_created',
+        'Id Appel': row['Id'],
+        'Id Externe': row['Id Externe'],
+        'Durée': duration
+    })
 
 df_detailed_problems = pd.DataFrame(detailed_results_problems)
 df_detailed_appointments = pd.DataFrame(detailed_results_appointments)
+
+# S'assurer que les DataFrames ont les colonnes nécessaires même s'ils sont vides
+if df_detailed_problems.empty:
+    df_detailed_problems = pd.DataFrame(columns=['Examen Identifié', 'Examen Normalisé', 'Catégorie', 'Tag', 'Id Appel', 'Id Externe', 'Durée'])
+
+if df_detailed_appointments.empty:
+    df_detailed_appointments = pd.DataFrame(columns=['Examen Identifié', 'Examen Normalisé', 'Catégorie', 'Tag', 'Id Appel', 'Id Externe', 'Durée'])
 
 print("📈 Génération des statistiques...")
 
