@@ -220,7 +220,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                           const { percent } = props
                           const pct = percent * 100
                           // Ne pas afficher la ligne si < 1%
-                          if (pct < 1) return null
+                          if (pct < 1) return <path d="" />
 
                           return (
                             <path
@@ -269,8 +269,9 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         wrapperStyle={{ fontSize: '12px' }}
                         formatter={(value, entry) => {
                           const total = problemsCategoryData.reduce((sum, item) => sum + item.value, 0)
-                          const percent = ((entry.payload.value / total) * 100).toFixed(1)
-                          return `${value} (${entry.payload.value} - ${percent}%)`
+                          const payloadValue = entry.payload?.value ?? 0
+                          const percent = ((payloadValue / total) * 100).toFixed(1)
+                          return `${value} (${payloadValue} - ${percent}%)`
                         }}
                       />
                     </PieChart>
@@ -294,7 +295,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                           const { percent } = props
                           const pct = percent * 100
                           // Ne pas afficher la ligne si < 1%
-                          if (pct < 1) return null
+                          if (pct < 1) return <path d="" />
 
                           return (
                             <path
@@ -342,8 +343,9 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         wrapperStyle={{ fontSize: '12px' }}
                         formatter={(value, entry) => {
                           const total = tagData.reduce((sum, item) => sum + item.value, 0)
-                          const percent = ((entry.payload.value / total) * 100).toFixed(1)
-                          return `${value} (${entry.payload.value} - ${percent}%)`
+                          const payloadValue = entry.payload?.value ?? 0
+                          const percent = ((payloadValue / total) * 100).toFixed(1)
+                          return `${value} (${payloadValue} - ${percent}%)`
                         }}
                       />
                     </PieChart>
@@ -375,7 +377,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                           const { percent } = props
                           const pct = percent * 100
                           // Ne pas afficher la ligne si < 1%
-                          if (pct < 1) return null
+                          if (pct < 1) return <path d="" />
 
                           return (
                             <path
@@ -424,8 +426,9 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         wrapperStyle={{ fontSize: '12px' }}
                         formatter={(value, entry) => {
                           const total = appointmentsCategoryData.reduce((sum, item) => sum + item.value, 0)
-                          const percent = ((entry.payload.value / total) * 100).toFixed(1)
-                          return `${value} (${entry.payload.value} - ${percent}%)`
+                          const payloadValue = entry.payload?.value ?? 0
+                          const percent = ((payloadValue / total) * 100).toFixed(1)
+                          return `${value} (${payloadValue} - ${percent}%)`
                         }}
                       />
                     </PieChart>
