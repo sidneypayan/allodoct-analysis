@@ -153,7 +153,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
 
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-gray-600 text-sm font-medium">Examens après regroupement</p>
+                <p className="text-gray-600 text-sm font-medium">Intitulés d'examens cohérents</p>
                 <TrendingUp className="w-5 h-5 text-purple-500" />
               </div>
               <p className="text-3xl font-bold text-gray-900">{summary.unique_exams}</p>
@@ -161,7 +161,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
 
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-gray-600 text-sm font-medium">Intitulés incompris</p>
+                <p className="text-gray-600 text-sm font-medium">Intitulés d'examens incohérents</p>
                 <AlertTriangle className="w-5 h-5 text-red-500" />
               </div>
               <p className="text-3xl font-bold text-gray-900">{summary.bugs_detected}</p>

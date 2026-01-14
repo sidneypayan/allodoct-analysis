@@ -146,7 +146,7 @@ function parseSummarySheet(workbook: XLSX.WorkBook) {
     total_calls: summaryMap['Appels transférés/décrochés'] || summaryMap['Appels transférés'] || 0,
     unique_exams: summaryMap['Examens distincts'] || 0,
     categories_found: summaryMap['Catégories trouvées'] || 0,
-    bugs_detected: summaryMap['Intitulés incompris'] || 0,
+    bugs_detected: summaryMap['Intitulés d\'examens incohérents'] || summaryMap['Intitulés incompris'] || 0,
     total_duration: summaryMap['Durée totale conversations (secondes)'] || 0,
     appointments_created: summaryMap['Rendez-vous créés'] || 0
   }
@@ -156,7 +156,7 @@ function reconstructSummary(problems_statistics: CategoryStats[], appointments_s
   const total_calls = problems_statistics.reduce((sum, stat) => sum + stat.total, 0)
   const unique_exams = problems_statistics.reduce((sum, stat) => sum + stat.exams.length, 0)
   const categories_found = problems_statistics.length
-  const bugsCategory = problems_statistics.find(s => s.category === 'INTITULES INCOMPRIS')
+  const bugsCategory = problems_statistics.find(s => s.category === 'INTITULES INCOHERENTS')
   const bugs_detected = bugsCategory ? bugsCategory.total : 0
   const total_duration = appointments_statistics.reduce((sum, stat) => sum + (stat.total_duration || 0), 0)
   const appointments_created = appointments_statistics.reduce((sum, stat) => sum + stat.total, 0)

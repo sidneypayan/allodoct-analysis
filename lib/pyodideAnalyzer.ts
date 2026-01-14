@@ -47,158 +47,101 @@ CATEGORIES = {
     'DENTAIRE': ['dentaire', 'panoramique dentaire', 'orthopantomogramme']
 }
 
-# Types d'examens (modalités)
-TYPES_EXAMENS = [
-    'irm', 'scanner', 'tdm', 'tomodensitometrie', 'tomodensitométrie',
-    'radio', 'radiographie', 'rx', 'teleradiographie', 'téléradiographie',
-    'echo', 'écho', 'echographie', 'échographie', 'doppler',
-    'mammographie', 'mammo',
-    'cone beam', 'conebeam',
-    'panoramique', 'orthopantomogramme',
-    'scintigraphie', 'pet', 'tep', 'spect',
-    'osteodensitometrie', 'ostéodensitométrie', 'densitometrie', 'densitométrie',
-    'angiographie', 'arteriographie', 'artériographie', 'coroscanner', 'angioscanner',
-    'coro', 'coronaro', 'coronarographie',
+# Liste consolidée de tous les termes médicaux/anatomiques valides
+# Extraits depuis reference_exams.csv - Un intitulé est VALIDE s'il contient AU MOINS UN de ces termes
+TERMES_MEDICAUX_VALIDES = [
+    # Types d'examens
+    'irm', 'scanner', 'tdm', 'cone beam', 'conebeam', 'radio', 'radiographie', 'echographie', 'échographie',
+    'doppler', 'mammographie', 'mammo', 'eos', 'ostéodensitométrie', 'densitométrie',
+    'arthroscanner', 'angioscanner', 'coroscanner', 'dentascanner',
+
+    # Termes anatomiques et médicaux extraits de reference_exams.csv
+    'abdo', 'abdo-pelvienne', 'abdomen', 'abdominal', 'abdominale', 'abdomino', 'abdomino-pelvien',
+    'abdomino-pelvienne', 'abdomino-rénale', 'achille', 'acide', 'acromiale', 'acromio',
+    'acromio-claviculaire', 'adducteurs', 'aisselle', 'anal', 'angio-irm', 'anus', 'aorte', 'aortique',
+    'artériel', 'artérielle', 'artérioveineux', 'artères', 'arthrographie', 'articulaire', 'articulation',
+    'articulations', 'atm', 'auditifs', 'avant-bras', 'axillaire', 'bassin', 'biceps', 'biliaire',
+    'biliaires', 'biopsie', 'brachial', 'bras', 'bébé', 'cai', 'calcaneum', 'calcanéums', 'calcique',
+    'canal', 'cancer', 'cardiaque', 'cardiologie', 'carotide', 'carotides', 'cavum', 'cervical',
+    'cervicale', 'cervicales', 'cervico', 'cervico-dorsal', 'cervico-dorso-lombaire',
+    'cervico-encéphalique', 'cervico-lombaire', 'cervico-thoracique', 'cheville', 'chevilles',
+    'chirurgie', 'cholangiographie', 'cholesteatome', 'cimentoplastie', 'claviculaire', 'clavicule',
+    'coccygienne', 'coccyx', 'cochléaire', 'coeur', 'col', 'colon', 'colonne', 'coloscanner',
+    'coloscopie', 'conduits', 'coronaires', 'costal', 'costale', 'cou', 'coude', 'coudes', 'creux',
+    'croissance', 'cryothérapie', 'crâne', 'crânienne', 'cubitus', 'cuisse', 'cystographie',
+    'cytoponction', 'cérébral', 'cérébrale', 'côtes', 'dacryoscanner', 'datation', 'densitométrie',
+    'dentaire', 'dentaires', 'dents', 'diffusion', 'disque', 'doigt', 'dorsal', 'dorsale', 'dorsaux',
+    'dorso', 'dorso-lombaire', 'dorsolombaire', 'dos', 'duodénal', 'dynamique', 'déféco-irm',
+    'défécographie', 'dépistage', 'ecg', 'echocardiographie', 'effort', 'electrocardiogramme',
+    'electromyogramme', 'encéphale', 'encéphalique', 'endométriose', 'endométrioses', 'endovaginale',
+    'entero', 'entero-irm', 'entier', 'entéro-scanner', 'epaule', 'estomac', 'face', 'facial',
+    'faciale', 'femme', 'ferrique', 'fesse', 'fessier', 'fessiers', 'fessière', 'fibroscan',
+    'fistule', 'fistulographie', 'foie', 'fontanelles', 'foraminale', 'fosse', 'fossettes', 'frontale',
+    'fullspine', 'féminin', 'fémur', 'galactographie', 'ganglion', 'gastro', 'gastrographine',
+    'genou', 'genoux', 'glande', 'glandes', 'glutéale', 'goniométrie', 'gonométrie', 'gorge', 'greffon',
+    'gril', 'grill', 'gros', 'grossesse', 'grêle', 'gémellaire', 'hanche', 'hanches', 'hemochromatose',
+    'holorachis', 'homme', 'huber', 'humerus', 'humérus', 'hyaluronique', 'hydrosolubles', 'hypophysaire',
+    'hypophyse', 'hysterosonographie', 'hystérographie', 'hystérosalpingographie', 'hémi-squelette',
+    'hépatique', 'hépatobiliaire', 'iliaque', 'iliaques', 'implant', 'implantation', 'implants',
+    'impulsionnelle', 'infertilité', 'infiltration', 'inférieur', 'inférieurs', 'inguinal', 'inguinale',
+    'injection', 'internes', 'intestin', 'intra', 'intra-articulaire', 'intraveineuse', 'irmpelvien',
+    'ischio', 'ischio-jambiers', 'isocinétisme', 'ivg', 'jambe', 'joue', 'kiné', 'kyste', 'l4', 'l5',
+    'lacrymales', 'laser', 'lavement', 'ligamentaire', 'lipome', 'lombaire', 'lombaires', 'lèvre',
+    'machoire', 'macrobiopsie', 'main', 'mains', 'mamelon', 'mammaire', 'mandibulaire', 'mandibulaires',
+    'mapa', 'masculin', 'massif', 'maxillaire', 'membre', 'membres', 'menton', 'mesure', 'moelle',
+    'molles', 'mollet', 'monitorage', 'morphologique', 'mou', 'mous', 'moyen', 'moyenne', 'muscle',
+    'muscles', 'musculaire', 'myocardique', 'médiastinale', 'médullaire', 'nerfs', 'nez', 'nuque',
+    'obstétrique', 'occipitale', 'oculaire', 'oesogastroduodénal', 'oil', 'omoplate', 'ongles',
+    'ophtalmologie', 'opn', 'orbites', 'oreille', 'orl', 'orteil', 'orteils', 'orthodontique',
+    'orthopantomogramme', 'os', 'osophagien', 'osseuse', 'osseux', 'osthéopathie', 'ostéo-articulaire',
+    'ovaires', 'ovarienne', 'ovulation', 'oxygénothérapie', 'pancréas', 'pancréatique', 'pangonogramme',
+    'pangonométrie', 'panoramique', 'paramètres', 'parathyroïde', 'pariétale', 'paroi', 'parotide',
+    'parotidienne', 'parties', 'peau', 'pelvi', 'pelvien', 'pelvienne', 'pelvimétrie', 'pelvis',
+    'penis', 'pharyngo', 'pharyngographie', 'pharyngé', 'pharynx', 'pied', 'pieds', 'plaquettes',
+    'plasma', 'plexus', 'pneumo', 'pneumothorax', 'podologique', 'podométrie', 'poignet', 'poignets',
+    'poitrine', 'ponction', 'postural', 'postérieure', 'pouce', 'poumons', 'pression', 'profil',
+    'propres', 'prostate', 'prostatique', 'prp', 'prélévement', 'préparation', 'pubienne', 'pulmonaire',
+    'pylore', 'pédiatrique', 'pénis', 'périnéale', 'péroné', 'rachidiens', 'rachis', 'radiculographie',
+    'rate', 'rectum', 'rein', 'reins', 'releveur', 'renal', 'rhino', 'rhumatologique', 'riche',
+    'rochers', 'région', 'rénal', 'rénale', 'rénales', 'réno', 'rétrograde', 'rééducation',
+    'saccoradiculographie', 'sacro', 'sacro-coccygienens', 'sacrum', 'sacré', 'salivaires', 'scoliose',
+    'score', 'scrotal', 'scrotale', 'scrotum', 'sein', 'seins', 'semaines', 'sialographie', 'sinus',
+    'sinusien', 'sous-maxillaire', 'spirométrie', 'squelette', 'statique', 'sternum', 'stress',
+    'stérilet', 'stéréotaxique', 'supra', 'supra-aortiques', 'supro', 'supérieur', 'supérieurs',
+    'surcharge', 'surrenales', 'surrenalien', 'surrénales', 'sus', 'système', 'sénologique',
+    'sésamoïdes', 'talon', 'tap', 'tavi', 'telécrâne', 'temporal', 'temporo', 'temporo-mandibulaire',
+    'temporo-mandibulaires', 'tendineux', 'tendinopathie', 'tendon', 'test', 'testiculaire', 'testicules',
+    'thoracique', 'thoraco', 'thoraco-abdominal', 'thoraco-abdomino-pelvien', 'thoraco-pelvienne',
+    'thorax', 'thyroïde', 'thyroïdien', 'thyroïdienne', 'tibia', 'tissu', 'tissus', 'togd', 'totale',
+    'totalité', 'tractions', 'trans', 'transcatheter', 'transcrânien', 'transfontanellaire', 'transit',
+    'trapèze', 'triceps', 'trimestre', 'trituration', 'trochanter', 'trompes', 'tronc', 'troncs', 'tsa',
+    'tuméfaction', 'télé', 'télécrane', 'télécrâne', 'télérachis', 'téléradiographie', 'tête', 'uiv',
+    'urinaire', 'urinaires', 'urographie', 'uroscanner', 'utérus', 'vaisseaux', 'valgus', 'valve',
+    'varus', 'vdmi', 'veineux', 'ventre', 'verge', 'vertébral', 'vertébrale', 'vesico', 'vessie',
+    'virtuelle', 'visage', 'voies', 'végétations', 'vésicale', 'vésiculaire', 'vésicule', 'yeux',
+    'âge', 'élastographie', 'élastométrie', 'épaule', 'épaules', 'épidurale', 'épreuve', 'étude',
 ]
-
-# Termes anatomiques et médicaux valides (hors types d'examens)
-TERMES_ANATOMIQUES = [
-    # Termes médicaux spécifiques
-    'calcique', 'calcification', 'calcium',
-    'dentaire', 'dent', 'dents', 'molaire', 'incisive', 'canine',
-
-    # Tête et cou
-    'tete', 'tête', 'crane', 'crâne', 'cerveau', 'cerebral', 'cérébral', 'encephale', 'encéphale',
-    'sinus', 'facial', 'face', 'machoire', 'mâchoire', 'mandibule', 'maxillaire',
-    'orbite', 'oeil', 'œil', 'yeux', 'oreille', 'rocher', 'atm', 'temporo',
-    'hypophyse', 'selle turcique', 'cou', 'cervical', 'cervicale', 'larynx', 'thyroide', 'thyroïde',
-    'parotide', 'glande', 'salivaire',
-
-    # Rachis / Colonne
-    'rachis', 'colonne', 'vertebr', 'vertébr', 'lombaire', 'dorsal', 'thoracique',
-    'sacr', 'coccyx', 'sacro', 'iliaque', 'medullaire', 'médullaire', 'moelle',
-
-    # Thorax
-    'thorax', 'thoracique', 'poumon', 'pulmonaire', 'plevre', 'plèvre', 'pleural',
-    'mediastin', 'médiastin', 'bronch', 'trachee', 'trachée',
-
-    # Cœur et vaisseaux
-    'coeur', 'cœur', 'cardiaque', 'cardiac', 'coronaire', 'aorte', 'aortique',
-    'vasculaire', 'veine', 'veineux', 'artere', 'artère', 'arteriel', 'artériel',
-    'carotide', 'jugulaire', 'angio', 'anévrisme', 'anevrisme',
-
-    # Abdomen
-    'abdomen', 'abdominal', 'abdomino', 'ventre', 'digestif',
-    'foie', 'hepat', 'hépat', 'vesicule', 'vésicule', 'biliaire', 'voies biliaires',
-    'pancreas', 'pancréas', 'pancreat', 'pancréat',
-    'rate', 'splen', 'splén',
-    'estomac', 'gastri', 'intestin', 'grele', 'grêle', 'colon', 'côlon', 'colique',
-    'rectum', 'rectal', 'anus', 'anal', 'appendice',
-    'peritoine', 'péritoine', 'retroperitoine', 'rétropéritoine',
-
-    # Reins et urinaire
-    'rein', 'renal', 'rénal', 'nephro', 'néphro', 'surrenale', 'surrénale',
-    'urinaire', 'vessie', 'vesical', 'vésical', 'uretre', 'urètre', 'uretere', 'uretère',
-    'uro', 'pyelon', 'pyélon',
-
-    # Pelvis et génital
-    'pelvis', 'pelvien', 'pelvienne', 'bassin',
-    'prostate', 'prostatique', 'vesicule seminale', 'vésicule séminale',
-    'testicule', 'testiculaire', 'scrotum', 'scrotal', 'penis', 'pénis', 'verge',
-    'uterus', 'utérus', 'uterin', 'utérin', 'ovaire', 'ovarien', 'trompe',
-    'endometre', 'endomètre', 'vagin', 'vaginal', 'vulve', 'perinee', 'périnée',
-
-    # Sein
-    'sein', 'mammaire', 'mammo',
-
-    # Membres supérieurs
-    'epaule', 'épaule', 'scapul', 'clavicule', 'acromio', 'omoplate',
-    'bras', 'humer', 'humér', 'coude', 'cubital',
-    'avant-bras', 'radius', 'ulna', 'cubitus', 'radial',
-    'poignet', 'carpe', 'carpien', 'main', 'doigt', 'phalang', 'metacarp', 'métacarp',
-
-    # Membres inférieurs
-    'hanche', 'coxo', 'femoral', 'fémoral', 'femur', 'fémur',
-    'cuisse', 'quadriceps', 'ischio',
-    'genou', 'rotule', 'patell', 'menisque', 'ménisque', 'ligament', 'croise', 'croisé',
-    'jambe', 'tibia', 'tibial', 'perone', 'péroné', 'fibula', 'fibulaire',
-    'cheville', 'malleol', 'malléol', 'talo', 'astragale',
-    'pied', 'tarse', 'metatars', 'métatars', 'orteil', 'calcaneum', 'calcanéum', 'talon',
-
-    # Os et articulations généraux
-    'os', 'osseux', 'osseuse', 'squelette', 'articul', 'articulaire',
-    'tendon', 'ligament', 'muscle', 'musculaire', 'cartilage',
-    'synovial', 'bursite', 'enthese', 'enthèse',
-
-    # Peau et tissus mous
-    'peau', 'cutane', 'cutané', 'sous-cutan', 'sous-cutané', 'dermato',
-    'tissu', 'mou', 'graisse', 'adipeux', 'lipome',
-
-    # Termes médicaux généraux pertinents
-    'biopsie', 'ponction', 'infiltration', 'injection', 'arthro',
-    'tumeur', 'tumoral', 'cancer', 'metastase', 'métastase', 'nodule', 'kyste', 'masse',
-    'fracture', 'entorse', 'luxation', 'rupture', 'dechirure', 'déchirure',
-    'hernie', 'discale', 'stenose', 'sténose', 'arthrose', 'arthrite',
-    'inflammation', 'infection', 'abces', 'abcès',
-    'corps entier', 'total body', 'body scan',
-]
-
-def contains_exam_type(exam_text):
-    """Vérifie si l'intitulé contient un type d'examen (IRM, Scanner, etc.)"""
-    if pd.isna(exam_text) or not str(exam_text).strip():
-        return False
-
-    exam_lower = str(exam_text).lower()
-
-    for type_exam in TYPES_EXAMENS:
-        if type_exam in exam_lower:
-            return True
-
-    return False
-
-def contains_anatomical_term(exam_text):
-    """Vérifie si l'intitulé contient au moins un terme anatomique"""
-    if pd.isna(exam_text) or not str(exam_text).strip():
-        return False
-
-    exam_lower = str(exam_text).lower()
-
-    for terme in TERMES_ANATOMIQUES:
-        if terme in exam_lower:
-            return True
-
-    return False
 
 def is_valid_exam(exam_text):
-    """Vérifie si l'intitulé est un examen valide"""
+    """
+    Vérifie si l'intitulé est un examen valide.
+
+    REGLE SIMPLE : Un intitulé est VALIDE s'il contient AU MOINS UN terme médical/anatomique
+    de la liste TERMES_MEDICAUX_VALIDES.
+
+    Sinon → INTITULES INCOHERENTS
+    """
     if pd.isna(exam_text) or not str(exam_text).strip():
         return False
 
     exam_lower = str(exam_text).lower().strip()
 
-    # Mots/patterns qui rendent l'intitulé invalide (clairement non médicaux)
-    invalid_patterns = [
-        # Temporel
-        'soir', 'matin', 'apres-midi', 'après-midi', 'demain', 'aujourd',
-        'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche',
-        'janvier', 'fevrier', 'février', 'mars', 'avril', 'mai', 'juin',
-        'juillet', 'aout', 'août', 'septembre', 'octobre', 'novembre', 'decembre', 'décembre',
-        # Salutations et phrases non médicales
-        'bonjour', 'bonsoir', 'salut', 'merci', 'svp', 'il vous plait',
-        # Références personnelles
-        'ma mere', 'ma mère', 'mon pere', 'mon père', 'ma femme', 'mon mari',
-        'mon fils', 'ma fille', 'mon enfant',
-        # Autres
-        'je veux', 'je voudrais', 'ai besoin', 'aimerais',
-    ]
+    # Vérifier si l'intitulé contient au moins un terme médical valide
+    for terme in TERMES_MEDICAUX_VALIDES:
+        if terme in exam_lower:
+            return True
 
-    # Si contient un pattern invalide → INCOMPRIS
-    for pattern in invalid_patterns:
-        if pattern in exam_lower:
-            return False
-
-    # Valide si contient au moins un type d'examen OU un terme anatomique
-    return contains_exam_type(exam_text) or contains_anatomical_term(exam_text)
+    return False
 
 def categorize_exam(exam_text, apply_filter=True):
     """Catégorise un examen"""
@@ -210,7 +153,7 @@ def categorize_exam(exam_text, apply_filter=True):
     # Si l'examen n'est pas valide (type d'examen sans terme anatomique, ou rien de médical)
     # Seulement pour les problèmes (not_found, not_authorized), pas pour les rendez-vous créés
     if apply_filter and not is_valid_exam(exam_text):
-        return 'INTITULES INCOMPRIS'
+        return 'INTITULES INCOHERENTS'
 
     # Déterminer la catégorie
     for category, keywords in CATEGORIES.items():
@@ -415,7 +358,7 @@ print("📈 Génération des statistiques...")
 
 # Générer les statistiques pour LES PROBLÈMES (not_found et not_authorized)
 problems_stats = []
-valid_categories = list(CATEGORIES.keys()) + ['INTITULES INCOMPRIS', 'AUTRE', 'INCONNU']
+valid_categories = list(CATEGORIES.keys()) + ['INTITULES INCOHERENTS', 'AUTRE', 'INCONNU']
 
 for category in valid_categories:
     df_cat = df_detailed_problems[df_detailed_problems['Catégorie'] == category]
@@ -483,8 +426,8 @@ for category in valid_categories:
 appointments_stats = []
 
 for category in valid_categories:
-    # Pas de catégorie INTITULES INCOMPRIS pour les rendez-vous créés
-    if category == 'INTITULES INCOMPRIS':
+    # Pas de catégorie INTITULES INCOHERENTS pour les rendez-vous créés
+    if category == 'INTITULES INCOHERENTS':
         continue
 
     df_cat = df_detailed_appointments[df_detailed_appointments['Catégorie'] == category]
@@ -535,9 +478,9 @@ for category in valid_categories:
 
 # Calculer le résumé
 total_calls = len(df_not_found) + len(df_not_authorized)
-# Compter les examens affichés dans les tableaux (hors INTITULES INCOMPRIS)
-unique_exams = sum(len(stat['exams']) for stat in problems_stats if stat['category'] != 'INTITULES INCOMPRIS')
-bugs_detected = len(df_detailed_problems[df_detailed_problems['Catégorie'] == 'INTITULES INCOMPRIS'])
+# Compter les examens affichés dans les tableaux (hors INTITULES INCOHERENTS)
+unique_exams = sum(len(stat['exams']) for stat in problems_stats if stat['category'] != 'INTITULES INCOHERENTS')
+bugs_detected = len(df_detailed_problems[df_detailed_problems['Catégorie'] == 'INTITULES INCOHERENTS'])
 # Calculer la durée totale UNIQUEMENT depuis appointment_created
 total_duration = int(df_appointment_created['Durée'].sum())
 # Calculer le nombre de rendez-vous créés (nombre de lignes dans appointment_created)

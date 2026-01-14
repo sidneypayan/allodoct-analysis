@@ -40,7 +40,7 @@ export function generateExcelFile(problemsStats: StatData[], appointmentsStats: 
       { 'Métrique': 'Appels transférés/décrochés', 'Valeur': summary.total_calls },
       { 'Métrique': 'Examens distincts', 'Valeur': summary.unique_exams },
       { 'Métrique': 'Catégories trouvées', 'Valeur': summary.categories_found },
-      { 'Métrique': 'Intitulés incompris', 'Valeur': summary.bugs_detected },
+      { 'Métrique': 'Intitulés d\'examens incohérents', 'Valeur': summary.bugs_detected },
       { 'Métrique': 'Durée totale conversations (secondes)', 'Valeur': summary.total_duration || 0 },
       { 'Métrique': 'Rendez-vous créés', 'Valeur': summary.appointments_created || 0 }
     ]

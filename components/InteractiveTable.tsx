@@ -162,7 +162,7 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                       <ChevronDown className="w-5 h-5 text-gray-600" />
                     }
                   </td>
-                  <td className={`px-4 py-4 font-bold ${stat.category === 'INTITULES INCOMPRIS' ? 'text-red-600' : 'text-gray-900'}`}>
+                  <td className={`px-4 py-4 font-bold ${stat.category === 'INTITULES INCOHERENTS' ? 'text-red-600' : 'text-gray-900'}`}>
                     {stat.category}
                   </td>
                   <td className="px-4 py-4 text-center font-semibold text-gray-900">
@@ -227,7 +227,7 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                                   </td>
                                   <td className="px-3 py-2 text-gray-800">
                                     {exam.name}
-                                    {!isAppointments && stat.category === 'INTITULES INCOMPRIS' && exam.ids.length > 0 && (
+                                    {!isAppointments && stat.category === 'INTITULES INCOHERENTS' && exam.ids.length > 0 && (
                                       <span className="ml-2 text-xs text-blue-600 font-mono">
                                         ({exam.ids.slice(0, 2).join(', ')}{exam.ids.length > 2 ? `...` : ''})
                                       </span>
