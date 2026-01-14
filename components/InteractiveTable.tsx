@@ -31,10 +31,17 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
-  // Filtrer les données
-  const filteredData = statistics.filter(stat =>
-    stat.category.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Filtrer les données par intitulés d'examens
+  const filteredData = statistics.filter(stat => {
+    const search = searchTerm.toLowerCase()
+
+    // Chercher dans les intitulés d'examens
+    const hasMatchingExam = stat.exams.some(exam =>
+      exam.name.toLowerCase().includes(search)
+    )
+
+    return hasMatchingExam
+  })
 
   // Trier les données
   const sortedData = [...filteredData].sort((a, b) => {
@@ -86,7 +93,7 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Rechercher une catégorie..."
+            placeholder="Rechercher un examen..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -218,7 +225,12 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                               </tr>
                             </thead>
                             <tbody>
-                              {stat.exams && stat.exams.map((exam, idx) => (
+                              {stat.exams && stat.exams
+                                .filter(exam =>
+                                  // Filtrer les examens par le terme de recherche
+                                  exam.name.toLowerCase().includes(searchTerm.toLowerCase())
+                                )
+                                .map((exam, idx) => (
                                 <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
                                   <td className="px-3 py-2 text-center">
                                     <span className={`inline-flex items-center justify-center w-6 h-6 ${isAppointments ? 'bg-green-600' : 'bg-blue-600'} text-white rounded-full text-xs font-bold`}>
