@@ -16,11 +16,15 @@ interface FileUploadProps {
 interface UploadedFile {
   name: string
   file: File
-  type: 'not_found' | 'not_authorized' | 'appointment_created'
+  stats: {
+    appointment_created: number
+    exam_not_found: number
+    exam_not_authorized: number
+  }
 }
 
 export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnalysisError }: FileUploadProps) {
-  const [files, setFiles] = useState<UploadedFile[]>([])
+  const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { pyodide, loading: pyodideLoading, error: pyodideError } = usePyodide()
@@ -50,7 +54,7 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
     }
   }
 
-  const detectFileType = async (file: File): Promise<'not_found' | 'not_authorized' | 'appointment_created' | null> => {
+  const validateAndCountTags = async (file: File): Promise<{ appointment_created: number, exam_not_found: number, exam_not_authorized: number } | null> => {
     try {
       const arrayBuffer = await file.arrayBuffer()
       const workbook = XLSX.read(arrayBuffer, { type: 'array' })
@@ -62,19 +66,31 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
         return null
       }
 
-      // Vérifier la colonne Tag dans la première ligne
-      const firstRow = data[0]
-      if (firstRow.Tag === 'exam_not_found') {
-        return 'not_found'
-      } else if (firstRow.Tag === 'exam_not_authorized') {
-        return 'not_authorized'
-      } else if (firstRow.Tag === 'appointment_created') {
-        return 'appointment_created'
+      // Compter les occurrences de chaque tag
+      const stats = {
+        appointment_created: 0,
+        exam_not_found: 0,
+        exam_not_authorized: 0
       }
 
-      return null
+      for (const row of data) {
+        if (row.Tag === 'appointment_created') {
+          stats.appointment_created++
+        } else if (row.Tag === 'exam_not_found') {
+          stats.exam_not_found++
+        } else if (row.Tag === 'exam_not_authorized') {
+          stats.exam_not_authorized++
+        }
+      }
+
+      // Vérifier qu'au moins un tag valide a été trouvé
+      if (stats.appointment_created + stats.exam_not_found + stats.exam_not_authorized === 0) {
+        return null
+      }
+
+      return stats
     } catch (err) {
-      console.error('Erreur lors de la détection du type de fichier:', err)
+      console.error('Erreur lors de la validation du fichier:', err)
       return null
     }
   }
@@ -82,34 +98,37 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
   const processFiles = async (newFiles: File[]) => {
     setError(null)
 
-    for (const file of newFiles) {
-      // Vérifier que c'est un fichier Excel
-      const name = file.name.toLowerCase()
-      if (!name.endsWith('.xlsx') && !name.endsWith('.xls')) {
-        setError('Seuls les fichiers Excel (.xlsx, .xls) sont acceptés')
-        continue
-      }
+    if (newFiles.length === 0) {
+      return
+    }
 
-      // Détecter automatiquement le type via la colonne Tag
-      const type = await detectFileType(file)
+    // Prendre seulement le premier fichier
+    const file = newFiles[0]
 
-      if (type) {
-        // Remplacer si déjà existant
-        setFiles(prev => prev.filter(f => f.type !== type))
-        setFiles(prev => [...prev, { name: file.name, file, type }])
-      } else {
-        setError('Impossible de détecter le type de fichier. Vérifiez que la colonne "Tag" contient "exam_not_found", "exam_not_authorized" ou "appointment_created"')
-      }
+    // Vérifier que c'est un fichier Excel
+    const name = file.name.toLowerCase()
+    if (!name.endsWith('.xlsx') && !name.endsWith('.xls')) {
+      setError('Seuls les fichiers Excel (.xlsx, .xls) sont acceptés')
+      return
+    }
+
+    // Valider et compter les tags
+    const stats = await validateAndCountTags(file)
+
+    if (stats) {
+      setUploadedFile({ name: file.name, file, stats })
+    } else {
+      setError('Impossible de valider le fichier. Vérifiez que la colonne "Tag" contient des valeurs valides : "exam_not_found", "exam_not_authorized" ou "appointment_created"')
     }
   }
 
-  const removeFile = (type: string) => {
-    setFiles(prev => prev.filter(f => f.type !== type))
+  const removeFile = () => {
+    setUploadedFile(null)
   }
 
   const handleAnalyze = async () => {
-    if (files.length === 0) {
-      setError('Veuillez uploader au moins un fichier')
+    if (!uploadedFile) {
+      setError('Veuillez uploader un fichier')
       return
     }
 
@@ -127,16 +146,10 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
       onAnalysisStart()
       setError(null)
 
-      const notFoundFile = files.find(f => f.type === 'not_found')?.file
-      const notAuthorizedFile = files.find(f => f.type === 'not_authorized')?.file
-      const appointmentCreatedFile = files.find(f => f.type === 'appointment_created')?.file
-
       console.log('🚀 Lancement de l\'analyse avec Pyodide...')
       const result = await analyzeWithPyodide(
         pyodide,
-        notFoundFile,
-        notAuthorizedFile,
-        appointmentCreatedFile
+        uploadedFile.file
       )
 
       onAnalysisComplete(result)
@@ -147,22 +160,12 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
     }
   }
 
-  const getFileTypeLabel = (type: string) => {
-    switch (type) {
-      case 'not_found': return 'Examens non trouvés'
-      case 'not_authorized': return 'Examens non autorisés'
-      case 'appointment_created': return 'Rendez-vous créés'
-      case 'reference': return 'Examens de référence'
-      default: return type
-    }
-  }
-
-  const hasAtLeastOneFile = files.length > 0
+  const hasFile = uploadedFile !== null
 
   return (
     <div className="space-y-4">
       {/* Pyodide Loading Status */}
-      {pyodideLoading && (
+      {pyodideLoading && !pyodide && (
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-blue-800">
             🐍 Chargement de Python dans le navigateur... (cela peut prendre quelques secondes la première fois)
@@ -191,16 +194,15 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
       >
         <Upload className={`w-12 h-12 mx-auto mb-4 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} />
         <p className="text-lg font-medium text-gray-700 mb-2">
-          Glissez-déposez vos fichiers ici
+          Glissez-déposez votre fichier Excel ici
         </p>
         <p className="text-sm text-gray-500 mb-4">
-          ou cliquez pour sélectionner
+          Fichier unique contenant toutes les données avec la colonne "Tag"
         </p>
         <input
           type="file"
-          multiple
           onChange={handleFileInput}
-          accept=".xlsx,.xls,.csv"
+          accept=".xlsx,.xls"
           className="hidden"
           id="file-upload"
         />
@@ -212,30 +214,40 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
         </label>
       </div>
 
-      {/* Uploaded Files List */}
-      {files.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="font-semibold text-gray-900">Fichiers uploadés :</h3>
-          {files.map(({ name, type }) => (
-            <div
-              key={type}
-              className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg"
-            >
+      {/* Uploaded File */}
+      {uploadedFile && (
+        <div className="space-y-3">
+          <h3 className="font-semibold text-gray-900">Fichier uploadé :</h3>
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <CheckCircle className="w-5 h-5 text-green-600" />
                 <div>
-                  <p className="font-medium text-gray-900">{name}</p>
-                  <p className="text-sm text-gray-600">{getFileTypeLabel(type)}</p>
+                  <p className="font-medium text-gray-900">{uploadedFile.name}</p>
                 </div>
               </div>
               <button
-                onClick={() => removeFile(type)}
+                onClick={removeFile}
                 className="p-2 hover:bg-green-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
-          ))}
+            <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-green-300">
+              <div className="text-center">
+                <p className="text-xs text-gray-600 mb-1">Rendez-vous créés</p>
+                <p className="text-lg font-bold text-green-700">{uploadedFile.stats.appointment_created}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-600 mb-1">Non trouvés</p>
+                <p className="text-lg font-bold text-red-700">{uploadedFile.stats.exam_not_found}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-600 mb-1">Non autorisés</p>
+                <p className="text-lg font-bold text-orange-700">{uploadedFile.stats.exam_not_authorized}</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -249,10 +261,10 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
       {/* Analyze Button */}
       <button
         onClick={handleAnalyze}
-        disabled={!hasAtLeastOneFile || pyodideLoading || !!pyodideError}
+        disabled={!hasFile || pyodideLoading || !!pyodideError}
         className={`
           w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all
-          ${hasAtLeastOneFile && !pyodideLoading && !pyodideError
+          ${hasFile && !pyodideLoading && !pyodideError
             ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }
@@ -260,9 +272,9 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
       >
         {pyodideLoading
           ? '🐍 Chargement de Python...'
-          : hasAtLeastOneFile
-            ? `🚀 Lancer l'analyse (${files.length} fichier${files.length > 1 ? 's' : ''})`
-            : '⏳ Veuillez ajouter au moins un fichier...'
+          : hasFile
+            ? '🚀 Lancer l\'analyse'
+            : '⏳ Veuillez ajouter un fichier...'
         }
       </button>
     </div>

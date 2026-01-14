@@ -95,15 +95,18 @@ export default function Home() {
 
                   <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <h3 className="font-semibold text-blue-900 mb-2">
-                      📋 Fichiers requis :
+                      📋 Format du fichier requis :
                     </h3>
-                    <ul className="space-y-1 text-sm text-blue-800">
-                      <li>• Fichier Excel avec Tag = <strong>"exam_not_found"</strong></li>
-                      <li>• Fichier Excel avec Tag = <strong>"exam_not_authorized"</strong></li>
-                      <li>• Fichier Excel avec Tag = <strong>"appointment_created"</strong> (pour le calcul de la durée)</li>
+                    <p className="text-sm text-blue-800 mb-3">
+                      Un seul fichier Excel contenant toutes vos données avec une colonne <strong>"Tag"</strong> pour identifier chaque type de ligne :
+                    </p>
+                    <ul className="space-y-1 text-sm text-blue-800 ml-4">
+                      <li>• Tag = <strong>"exam_not_found"</strong> → Rendez-vous non créés (examen non trouvé)</li>
+                      <li>• Tag = <strong>"exam_not_authorized"</strong> → Rendez-vous non créés (examen non autorisé)</li>
+                      <li>• Tag = <strong>"appointment_created"</strong> → Rendez-vous créés</li>
                     </ul>
-                    <p className="mt-2 text-xs text-blue-700">
-                      ℹ️ Les fichiers sont automatiquement détectés via la colonne "Tag"
+                    <p className="mt-3 text-xs text-blue-700">
+                      ℹ️ Le fichier est automatiquement validé et les statistiques sont affichées avant l'analyse
                     </p>
                   </div>
                 </>
