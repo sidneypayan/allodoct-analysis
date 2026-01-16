@@ -408,8 +408,9 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         chartViewMode === 'percent'
                           ? `${props.payload.value} appels (${value.toFixed(1)}%)`
                           : `${value.toLocaleString()} appels (${props.payload.percent}%)`,
-                        props.payload.name
+                        ''
                       ]}
+                      labelFormatter={(label) => label}
                       contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                     />
                     <Bar dataKey={chartViewMode === 'percent' ? 'percentNum' : 'value'} radius={[0, 4, 4, 0]}>
