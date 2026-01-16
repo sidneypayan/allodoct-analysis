@@ -283,7 +283,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
 
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-gray-600 text-sm font-medium">Problèmes (non créés)</p>
+                <p className="text-gray-600 text-sm font-medium">Rendez-vous non créés</p>
                 <AlertTriangle className="w-5 h-5 text-red-500" />
               </div>
               <p className="text-3xl font-bold text-gray-900">{summary.total_calls || 0}</p>
@@ -389,7 +389,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                   <BarChart
                     data={allTagsDataWithPercent}
                     layout="vertical"
-                    margin={{ top: 5, right: 80, left: 220, bottom: 5 }}
+                    margin={{ top: 5, right: 60, left: 10, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                     <XAxis
@@ -400,7 +400,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                     <YAxis
                       type="category"
                       dataKey="name"
-                      width={210}
+                      width={220}
                       tick={{ fontSize: 12 }}
                     />
                     <Tooltip
