@@ -470,11 +470,11 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         cy="50%"
                         innerRadius={80}
                         outerRadius={140}
-                        dataKey={chartViewMode === 'percent' ? 'percentNum' : 'value'}
-                        label={({ name, percent, value }) =>
+                        dataKey="value"
+                        label={({ payload }) =>
                           chartViewMode === 'percent'
-                            ? `${(percent * 100).toFixed(0)}%`
-                            : value.toLocaleString()
+                            ? `${payload.percent}%`
+                            : payload.value.toLocaleString()
                         }
                         labelLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
                       >
@@ -649,11 +649,11 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                             cy="50%"
                             innerRadius={60}
                             outerRadius={120}
-                            dataKey={chartViewMode === 'percent' ? 'percentNum' : 'value'}
-                            label={({ name, percent, value }) =>
+                            dataKey="value"
+                            label={({ payload }) =>
                               chartViewMode === 'percent'
-                                ? `${(percent * 100).toFixed(0)}%`
-                                : value.toLocaleString()
+                                ? `${payload.percent}%`
+                                : payload.value.toLocaleString()
                             }
                             labelLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
                           >
@@ -801,11 +801,11 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         cy="50%"
                         innerRadius={60}
                         outerRadius={120}
-                        dataKey={chartViewMode === 'percent' ? 'percentNum' : 'value'}
-                        label={({ name, percent, value }) =>
+                        dataKey="value"
+                        label={({ payload }) =>
                           chartViewMode === 'percent'
-                            ? `${(percent * 100).toFixed(0)}%`
-                            : value.toLocaleString()
+                            ? `${payload.percent}%`
+                            : payload.value.toLocaleString()
                         }
                         labelLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
                       >
