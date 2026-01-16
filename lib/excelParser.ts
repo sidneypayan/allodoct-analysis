@@ -98,8 +98,8 @@ export async function parseExcelToAnalysisResult(file: File): Promise<AnalysisRe
       }
     }
 
-    // Lire le summary depuis la feuille Summary si elle existe
-    const summary = workbook.Sheets['Summary']
+    // Lire le summary depuis la feuille Résumé ou Summary (compatibilité) si elle existe
+    const summary = (workbook.Sheets['Résumé'] || workbook.Sheets['Summary'])
       ? parseSummarySheet(workbook)
       : reconstructSummary(statsByTag, appointments_statistics)
 
@@ -210,7 +210,7 @@ function parseCategorySheet(workbook: XLSX.WorkBook, sheetName: string, isAppoin
 }
 
 function parseSummarySheet(workbook: XLSX.WorkBook) {
-  const worksheet = workbook.Sheets['Summary']
+  const worksheet = workbook.Sheets['Résumé'] || workbook.Sheets['Summary']
   const rows: any[] = XLSX.utils.sheet_to_json(worksheet)
 
   const summaryMap: Record<string, number> = {}

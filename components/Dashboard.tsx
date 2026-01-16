@@ -69,12 +69,12 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar')
 
   // Préparer les données pour l'histogramme de répartition par tag (dynamique)
-  // Utilise les noms de tags en anglais (non traduits)
+  // Utilise les labels français
   const allTagsData = Object.entries(summary.all_tags_counts || {})
     .map(([tag, count]) => {
-      const config = ALL_TAGS_CONFIG[tag] || { color: '#9ca3af' }
+      const config = ALL_TAGS_CONFIG[tag] || { label: tag, color: '#9ca3af' }
       return {
-        name: tag,  // Nom du tag en anglais
+        name: config.label,  // Label en français
         value: count,
         color: config.color
       }

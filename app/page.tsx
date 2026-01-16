@@ -81,7 +81,7 @@ export default function Home() {
               <div className="flex items-center gap-2 mb-6">
                 <Upload className="w-6 h-6 text-blue-600" />
                 <h2 className="text-2xl font-semibold text-gray-900">
-                  {mode === 'upload' ? 'Upload des fichiers' : 'Importer une analyse'}
+                  {mode === 'upload' ? 'Chargement des fichiers' : 'Importer une analyse'}
                 </h2>
               </div>
 

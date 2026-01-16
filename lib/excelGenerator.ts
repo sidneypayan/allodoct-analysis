@@ -88,7 +88,7 @@ export function generateExcelFile(data: AnalysisData, summary?: SummaryData): st
     }
 
     const wsSummary = XLSX.utils.json_to_sheet(summaryData)
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary')
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Résumé')
   }
 
   // Fonction helper pour générer les feuilles de stats pour un tag
