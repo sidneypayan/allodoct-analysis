@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, Fragment } from 'react'
-import { ChevronDown, ChevronUp, Search, Filter } from 'lucide-react'
-import { CategoryStats } from '@/lib/types'
+import { ChevronDown, ChevronUp, Search, Filter, Download } from 'lucide-react'
+import { CategoryStats, Exam } from '@/lib/types'
 
 interface InteractiveTableProps {
   statistics: CategoryStats[]
@@ -76,9 +76,33 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
 
   const SortIcon = ({ field }: { field: keyof CategoryStats }) => {
     if (sortField !== field) return null
-    return sortDirection === 'asc' ? 
-      <ChevronUp className="w-4 h-4 inline ml-1" /> : 
+    return sortDirection === 'asc' ?
+      <ChevronUp className="w-4 h-4 inline ml-1" /> :
       <ChevronDown className="w-4 h-4 inline ml-1" />
+  }
+
+  // Fonction pour télécharger la liste des examens d'une catégorie
+  const downloadExamsList = (category: string, exams: Exam[], e: React.MouseEvent) => {
+    e.stopPropagation() // Empêcher l'expansion/fermeture de la ligne
+
+    // Filtrer les examens selon la recherche active
+    const filteredExams = searchTerm
+      ? exams.filter(exam => exam.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      : exams
+
+    // Créer le contenu du fichier texte
+    const content = filteredExams.map(exam => exam.name).join('\n')
+
+    // Créer et télécharger le fichier
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `examens_${category.replace(/\s+/g, '_')}.txt`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -176,6 +200,26 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                   <tr className={isAppointments ? 'bg-green-100' : 'bg-blue-100'}>
                     <td colSpan={isAppointments ? 5 : 3} className="p-0">
                       <div className="bg-white overflow-y-auto max-h-[600px]">
+                        {/* Header avec bouton téléchargement */}
+                        <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
+                          <span className="text-sm text-gray-600">
+                            {stat.exams.filter(exam =>
+                              exam.name.toLowerCase().includes(searchTerm.toLowerCase())
+                            ).length} examen(s)
+                          </span>
+                          <button
+                            onClick={(e) => downloadExamsList(stat.category, stat.exams, e)}
+                            className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                              isAppointments
+                                ? 'bg-green-600 hover:bg-green-700 text-white'
+                                : 'bg-blue-600 hover:bg-blue-700 text-white'
+                            }`}
+                            title="Télécharger la liste des examens"
+                          >
+                            <Download className="w-4 h-4" />
+                            Télécharger la liste
+                          </button>
+                        </div>
                         {/* Tableau des examens avec colonnes alignées */}
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
