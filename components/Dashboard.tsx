@@ -13,6 +13,27 @@ interface DashboardProps {
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#6366f1']
 
+// Configuration des labels et couleurs pour tous les tags
+const ALL_TAGS_CONFIG: Record<string, { label: string; color: string }> = {
+  appointment_created: { label: 'RDV créés', color: '#10b981' },
+  appointment_creation_failed: { label: 'Création RDV échouée', color: '#ef4444' },
+  availabilities_provided: { label: 'Dispo proposées', color: '#3b82f6' },
+  availability_fetch_failed: { label: 'Récup. dispo échouée', color: '#f97316' },
+  availability_selected: { label: 'Dispo sélectionnée', color: '#14b8a6' },
+  availability_selection_failed: { label: 'Sélection dispo échouée', color: '#f59e0b' },
+  call_start: { label: 'Début appel', color: '#6366f1' },
+  caller_ask_multiple_exams: { label: 'Examens multiples', color: '#8b5cf6' },
+  exam_additional_question: { label: 'Question additionnelle', color: '#a855f7' },
+  exam_found: { label: 'Exam trouvé', color: '#22c55e' },
+  exam_not_authorized: { label: 'Non autorisés', color: '#fb923c' },
+  exam_not_found: { label: 'Non trouvés', color: '#dc2626' },
+  multiple_appointments_cancelled: { label: 'RDV annulés', color: '#ec4899' },
+  no_availabilities_found: { label: 'Pas de dispo', color: '#6b7280' },
+  no_upcoming_appointments: { label: 'Pas de RDV à venir', color: '#94a3b8' },
+  patient_not_found: { label: 'Patient non trouvé', color: '#be185d' },
+  upcoming_appointments_found: { label: 'RDV à venir trouvés', color: '#0ea5e9' },
+}
+
 // Configuration des sous-onglets pour les problèmes
 type ProblemsSubTab = 'exam_not_found' | 'exam_not_authorized' | 'availabilies_provided' | 'exam_found' | 'multiple_appointments_cancelled' | 'no_availabilities_found'
 
@@ -45,16 +66,18 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'problems' | 'appointments'>('overview')
   const [activeSubTab, setActiveSubTab] = useState<ProblemsSubTab>('exam_not_found')
 
-  // Préparer les données pour l'histogramme de répartition par tag
-  const allTagsData = [
-    { name: 'RDV créés', value: summary.appointments_created || 0, color: '#10b981' },
-    { name: 'Non trouvés', value: summary.exam_not_found_count || 0, color: '#ef4444' },
-    { name: 'Non autorisés', value: summary.exam_not_authorized_count || 0, color: '#f97316' },
-    { name: 'Dispo proposées', value: summary.availabilies_provided_count || 0, color: '#3b82f6' },
-    { name: 'Exam trouvé', value: summary.exam_found_count || 0, color: '#8b5cf6' },
-    { name: 'RDV annulés', value: summary.multiple_appointments_cancelled_count || 0, color: '#ec4899' },
-    { name: 'Pas de dispo', value: summary.no_availabilities_found_count || 0, color: '#6b7280' },
-  ]
+  // Préparer les données pour l'histogramme de répartition par tag (dynamique)
+  const allTagsData = Object.entries(summary.all_tags_counts || {})
+    .map(([tag, count]) => {
+      const config = ALL_TAGS_CONFIG[tag] || { label: tag, color: '#9ca3af' }
+      return {
+        name: config.label,
+        value: count,
+        color: config.color,
+        tag: tag
+      }
+    })
+    .filter(item => item.value > 0)
 
   const totalAllTags = allTagsData.reduce((sum, item) => sum + item.value, 0)
 
@@ -345,7 +368,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                 <h3 className="text-xl font-semibold text-gray-900 mb-6">
                   Répartition par tag (%)
                 </h3>
-                <ResponsiveContainer width="100%" height={450}>
+                <ResponsiveContainer width="100%" height={Math.max(450, allTagsDataWithPercent.length * 45)}>
                   <BarChart
                     data={allTagsDataWithPercent}
                     layout="vertical"

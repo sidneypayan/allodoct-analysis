@@ -214,9 +214,20 @@ function parseSummarySheet(workbook: XLSX.WorkBook) {
   const rows: any[] = XLSX.utils.sheet_to_json(worksheet)
 
   const summaryMap: Record<string, number> = {}
+  const all_tags_counts: Record<string, number> = {}
+
   rows.forEach(row => {
-    if (row['Valeur'] !== '' && row['Valeur'] !== undefined) {
-      summaryMap[row['Métrique']] = row['Valeur']
+    const metrique = row['Métrique'] as string
+    const valeur = row['Valeur']
+
+    if (valeur !== '' && valeur !== undefined) {
+      // Vérifier si c'est un tag (format: "tag:nom_du_tag")
+      if (metrique && metrique.startsWith('tag:')) {
+        const tagName = metrique.substring(4) // Enlever "tag:"
+        all_tags_counts[tagName] = Number(valeur) || 0
+      } else {
+        summaryMap[metrique] = valeur
+      }
     }
   })
 
@@ -232,7 +243,8 @@ function parseSummarySheet(workbook: XLSX.WorkBook) {
     availabilies_provided_count: summaryMap['Dispo proposées'] || 0,
     exam_found_count: summaryMap['Exam trouvé'] || 0,
     multiple_appointments_cancelled_count: summaryMap['RDV annulés'] || 0,
-    no_availabilities_found_count: summaryMap['Pas de dispo'] || 0
+    no_availabilities_found_count: summaryMap['Pas de dispo'] || 0,
+    all_tags_counts: Object.keys(all_tags_counts).length > 0 ? all_tags_counts : {}
   }
 }
 
@@ -256,6 +268,23 @@ function reconstructSummary(
   const total_duration = appointments_statistics.reduce((sum, stat) => sum + (stat.total_duration || 0), 0)
   const appointments_created = appointments_statistics.reduce((sum, stat) => sum + stat.total, 0)
 
+  // Construire all_tags_counts à partir des données disponibles
+  const all_tags_counts: Record<string, number> = {}
+  const exam_not_found_count = countTotal(statsByTag.exam_not_found)
+  const exam_not_authorized_count = countTotal(statsByTag.exam_not_authorized)
+  const availabilies_provided_count = countTotal(statsByTag.availabilies_provided)
+  const exam_found_count = countTotal(statsByTag.exam_found)
+  const multiple_appointments_cancelled_count = countTotal(statsByTag.multiple_appointments_cancelled)
+  const no_availabilities_found_count = countTotal(statsByTag.no_availabilities_found)
+
+  if (appointments_created > 0) all_tags_counts['appointment_created'] = appointments_created
+  if (exam_not_found_count > 0) all_tags_counts['exam_not_found'] = exam_not_found_count
+  if (exam_not_authorized_count > 0) all_tags_counts['exam_not_authorized'] = exam_not_authorized_count
+  if (availabilies_provided_count > 0) all_tags_counts['availabilities_provided'] = availabilies_provided_count
+  if (exam_found_count > 0) all_tags_counts['exam_found'] = exam_found_count
+  if (multiple_appointments_cancelled_count > 0) all_tags_counts['multiple_appointments_cancelled'] = multiple_appointments_cancelled_count
+  if (no_availabilities_found_count > 0) all_tags_counts['no_availabilities_found'] = no_availabilities_found_count
+
   return {
     total_calls,
     unique_exams,
@@ -263,12 +292,13 @@ function reconstructSummary(
     bugs_detected: bugsDetected,
     total_duration,
     appointments_created,
-    exam_not_found_count: countTotal(statsByTag.exam_not_found),
-    exam_not_authorized_count: countTotal(statsByTag.exam_not_authorized),
-    availabilies_provided_count: countTotal(statsByTag.availabilies_provided),
-    exam_found_count: countTotal(statsByTag.exam_found),
-    multiple_appointments_cancelled_count: countTotal(statsByTag.multiple_appointments_cancelled),
-    no_availabilities_found_count: countTotal(statsByTag.no_availabilities_found)
+    exam_not_found_count,
+    exam_not_authorized_count,
+    availabilies_provided_count,
+    exam_found_count,
+    multiple_appointments_cancelled_count,
+    no_availabilities_found_count,
+    all_tags_counts
   }
 }
 

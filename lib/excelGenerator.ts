@@ -34,6 +34,7 @@ interface SummaryData {
   exam_found_count: number
   multiple_appointments_cancelled_count: number
   no_availabilities_found_count: number
+  all_tags_counts?: Record<string, number>
 }
 
 interface AnalysisData {
@@ -62,14 +63,14 @@ export function generateExcelFile(data: AnalysisData, summary?: SummaryData): st
 
   // Onglet Summary
   if (summary) {
-    const summaryData = [
+    const summaryData: { 'Métrique': string; 'Valeur': string | number }[] = [
       { 'Métrique': 'Appels transférés/décrochés (total)', 'Valeur': summary.total_calls },
       { 'Métrique': 'Examens distincts', 'Valeur': summary.unique_exams },
       { 'Métrique': 'Catégories trouvées', 'Valeur': summary.categories_found },
       { 'Métrique': 'Intitulés d\'examens incohérents', 'Valeur': summary.bugs_detected },
       { 'Métrique': 'Durée totale conversations (secondes)', 'Valeur': summary.total_duration || 0 },
       { 'Métrique': 'Rendez-vous créés', 'Valeur': summary.appointments_created || 0 },
-      { 'Métrique': '--- Par tag ---', 'Valeur': '' },
+      { 'Métrique': '--- Compteurs par tag analysé ---', 'Valeur': '' },
       { 'Métrique': 'Non trouvés', 'Valeur': summary.exam_not_found_count || 0 },
       { 'Métrique': 'Non autorisés', 'Valeur': summary.exam_not_authorized_count || 0 },
       { 'Métrique': 'Dispo proposées', 'Valeur': summary.availabilies_provided_count || 0 },
@@ -77,6 +78,15 @@ export function generateExcelFile(data: AnalysisData, summary?: SummaryData): st
       { 'Métrique': 'RDV annulés', 'Valeur': summary.multiple_appointments_cancelled_count || 0 },
       { 'Métrique': 'Pas de dispo', 'Valeur': summary.no_availabilities_found_count || 0 }
     ]
+
+    // Ajouter tous les tags depuis all_tags_counts
+    if (summary.all_tags_counts && Object.keys(summary.all_tags_counts).length > 0) {
+      summaryData.push({ 'Métrique': '--- Tous les tags (vue d\'ensemble) ---', 'Valeur': '' })
+      for (const [tag, count] of Object.entries(summary.all_tags_counts)) {
+        summaryData.push({ 'Métrique': `tag:${tag}`, 'Valeur': count })
+      }
+    }
+
     const wsSummary = XLSX.utils.json_to_sheet(summaryData)
     XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary')
   }

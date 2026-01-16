@@ -462,6 +462,14 @@ bugs_detected = sum(len(df_detailed_by_tag[tag][df_detailed_by_tag[tag]['Catégo
 total_duration = int(df_appointment_created['Durée'].sum())
 appointments_created = len(df_appointment_created)
 
+# Compter TOUS les tags présents dans le fichier (pour l'histogramme vue d'ensemble)
+all_tags_counts = {}
+if 'Tag' in df_all_data.columns:
+    tag_counts = df_all_data['Tag'].value_counts()
+    for tag_name, count in tag_counts.items():
+        if pd.notna(tag_name) and str(tag_name).strip():
+            all_tags_counts[str(tag_name)] = int(count)
+
 summary = {
     'total_calls': int(total_calls),
     'unique_exams': int(unique_exams),
@@ -474,7 +482,8 @@ summary = {
     'availabilies_provided_count': int(len(dfs_by_tag['availabilies_provided'])),
     'exam_found_count': int(len(dfs_by_tag['exam_found'])),
     'multiple_appointments_cancelled_count': int(len(dfs_by_tag['multiple_appointments_cancelled'])),
-    'no_availabilities_found_count': int(len(dfs_by_tag['no_availabilities_found']))
+    'no_availabilities_found_count': int(len(dfs_by_tag['no_availabilities_found'])),
+    'all_tags_counts': all_tags_counts
 }
 
 print("✅ Analyse terminée !")

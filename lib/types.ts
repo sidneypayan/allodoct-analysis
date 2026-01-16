@@ -37,13 +37,15 @@ export interface AnalysisResult {
     bugs_detected: number
     total_duration: number  // Durée totale en secondes
     appointments_created: number  // Nombre de rendez-vous créés
-    // Compteurs par tag pour les problèmes
+    // Compteurs par tag pour les problèmes (tags analysés en détail)
     exam_not_found_count: number
     exam_not_authorized_count: number
     availabilies_provided_count: number
     exam_found_count: number
     multiple_appointments_cancelled_count: number
     no_availabilities_found_count: number
+    // Compteurs pour TOUS les tags (pour l'histogramme vue d'ensemble)
+    all_tags_counts: Record<string, number>
   }
   // Statistiques séparées par tag (problèmes)
   exam_not_found_statistics: CategoryStats[]
