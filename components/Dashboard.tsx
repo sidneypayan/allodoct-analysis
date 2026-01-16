@@ -279,9 +279,6 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                 <CheckCircle className="w-5 h-5 text-green-500" />
               </div>
               <p className="text-3xl font-bold text-gray-900">{summary.appointments_created || 0}</p>
-              <p className="text-sm text-gray-500 mt-1">
-                {totalAllTags > 0 ? ((summary.appointments_created / totalAllTags) * 100).toFixed(1) : 0}% du total
-              </p>
             </div>
 
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500">
@@ -290,9 +287,6 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                 <AlertTriangle className="w-5 h-5 text-red-500" />
               </div>
               <p className="text-3xl font-bold text-gray-900">{summary.total_calls || 0}</p>
-              <p className="text-sm text-gray-500 mt-1">
-                {totalAllTags > 0 ? ((summary.total_calls / totalAllTags) * 100).toFixed(1) : 0}% du total
-              </p>
             </div>
           </>
         ) : activeTab === 'problems' ? (
