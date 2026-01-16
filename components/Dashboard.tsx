@@ -67,14 +67,14 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
   const [activeSubTab, setActiveSubTab] = useState<ProblemsSubTab>('exam_not_found')
 
   // Préparer les données pour l'histogramme de répartition par tag (dynamique)
+  // Utilise les noms de tags en anglais (non traduits)
   const allTagsData = Object.entries(summary.all_tags_counts || {})
     .map(([tag, count]) => {
-      const config = ALL_TAGS_CONFIG[tag] || { label: tag, color: '#9ca3af' }
+      const config = ALL_TAGS_CONFIG[tag] || { color: '#9ca3af' }
       return {
-        name: config.label,
+        name: tag,  // Nom du tag en anglais
         value: count,
-        color: config.color,
-        tag: tag
+        color: config.color
       }
     })
     .filter(item => item.value > 0)
@@ -366,13 +366,13 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
               {/* Histogramme de répartition par tag */}
               <div className="bg-gray-50 rounded-xl p-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                  Répartition par tag (%)
+                  Nombre d'appels par catégories
                 </h3>
                 <ResponsiveContainer width="100%" height={Math.max(450, allTagsDataWithPercent.length * 45)}>
                   <BarChart
                     data={allTagsDataWithPercent}
                     layout="vertical"
-                    margin={{ top: 5, right: 80, left: 120, bottom: 5 }}
+                    margin={{ top: 5, right: 80, left: 220, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                     <XAxis
@@ -383,13 +383,13 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                     <YAxis
                       type="category"
                       dataKey="name"
-                      width={110}
-                      tick={{ fontSize: 13 }}
+                      width={210}
+                      tick={{ fontSize: 12 }}
                     />
                     <Tooltip
                       formatter={(value: number, name: string, props: any) => [
-                        `${props.payload.value} (${value}%)`,
-                        'Lignes'
+                        `${props.payload.value} appels (${value.toFixed(1)}%)`,
+                        props.payload.name
                       ]}
                       contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                     />
