@@ -360,10 +360,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
             <>
               {/* Histogramme de répartition par tag */}
               <div className="bg-gray-50 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    Nombre d'appels par catégories
-                  </h3>
+                <div className="flex items-center justify-end mb-4">
                   {/* Toggle switch */}
                   <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
                     <button
