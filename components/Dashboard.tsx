@@ -1,7 +1,7 @@
 'use client'
 
-import { Download, RotateCcw, TrendingUp, AlertTriangle, CheckCircle, FileSpreadsheet, Clock, Calendar } from 'lucide-react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
+import { Download, RotateCcw, TrendingUp, AlertTriangle, CheckCircle, FileSpreadsheet, Clock, Calendar, BarChart3 } from 'lucide-react'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts'
 import { AnalysisResult, CategoryStats } from '@/lib/types'
 import InteractiveTable from './InteractiveTable'
 import { useState } from 'react'
@@ -42,8 +42,29 @@ function formatDuration(seconds: number): string {
 
 export default function Dashboard({ data, onReset }: DashboardProps) {
   const { summary, appointments_statistics, excel_file_base64 } = data
-  const [activeTab, setActiveTab] = useState<'problems' | 'appointments'>('appointments')
+  const [activeTab, setActiveTab] = useState<'overview' | 'problems' | 'appointments'>('overview')
   const [activeSubTab, setActiveSubTab] = useState<ProblemsSubTab>('exam_not_found')
+
+  // Préparer les données pour l'histogramme de répartition par tag
+  const allTagsData = [
+    { name: 'RDV créés', value: summary.appointments_created || 0, color: '#10b981' },
+    { name: 'Non trouvés', value: summary.exam_not_found_count || 0, color: '#ef4444' },
+    { name: 'Non autorisés', value: summary.exam_not_authorized_count || 0, color: '#f97316' },
+    { name: 'Dispo proposées', value: summary.availabilies_provided_count || 0, color: '#3b82f6' },
+    { name: 'Exam trouvé', value: summary.exam_found_count || 0, color: '#8b5cf6' },
+    { name: 'RDV annulés', value: summary.multiple_appointments_cancelled_count || 0, color: '#ec4899' },
+    { name: 'Pas de dispo', value: summary.no_availabilities_found_count || 0, color: '#6b7280' },
+  ]
+
+  const totalAllTags = allTagsData.reduce((sum, item) => sum + item.value, 0)
+
+  const allTagsDataWithPercent = allTagsData
+    .map(item => ({
+      ...item,
+      percent: totalAllTags > 0 ? ((item.value / totalAllTags) * 100).toFixed(1) : '0',
+      percentNum: totalAllTags > 0 ? (item.value / totalAllTags) * 100 : 0
+    }))
+    .sort((a, b) => b.value - a.value)
 
   // Fonction pour obtenir les statistiques du sous-onglet actif
   const getActiveStatistics = (): CategoryStats[] => {
@@ -159,6 +180,16 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="flex border-b">
           <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
+              activeTab === 'overview'
+                ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Vue d'ensemble ({totalAllTags})
+          </button>
+          <button
             onClick={() => setActiveTab('appointments')}
             className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
               activeTab === 'appointments'
@@ -208,7 +239,39 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {activeTab === 'problems' ? (
+        {activeTab === 'overview' ? (
+          <>
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-indigo-500">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-gray-600 text-sm font-medium">Total des lignes</p>
+                <BarChart3 className="w-5 h-5 text-indigo-500" />
+              </div>
+              <p className="text-3xl font-bold text-gray-900">{totalAllTags}</p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-gray-600 text-sm font-medium">Rendez-vous créés</p>
+                <CheckCircle className="w-5 h-5 text-green-500" />
+              </div>
+              <p className="text-3xl font-bold text-gray-900">{summary.appointments_created || 0}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                {totalAllTags > 0 ? ((summary.appointments_created / totalAllTags) * 100).toFixed(1) : 0}% du total
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-gray-600 text-sm font-medium">Problèmes (non créés)</p>
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+              </div>
+              <p className="text-3xl font-bold text-gray-900">{summary.total_calls || 0}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                {totalAllTags > 0 ? ((summary.total_calls / totalAllTags) * 100).toFixed(1) : 0}% du total
+              </p>
+            </div>
+          </>
+        ) : activeTab === 'problems' ? (
           <>
             <div className={`bg-white rounded-xl shadow-lg p-6 border-l-4 ${
               activeSubTab === 'exam_not_found' ? 'border-red-500' :
@@ -275,7 +338,90 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
       {/* Charts and Tables */}
       <div className="bg-white rounded-xl shadow-lg">
         <div className="p-6">
-          {activeTab === 'problems' ? (
+          {activeTab === 'overview' ? (
+            <>
+              {/* Histogramme de répartition par tag */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                  Répartition par tag (%)
+                </h3>
+                <ResponsiveContainer width="100%" height={450}>
+                  <BarChart
+                    data={allTagsDataWithPercent}
+                    layout="vertical"
+                    margin={{ top: 5, right: 80, left: 120, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                    <XAxis
+                      type="number"
+                      domain={[0, 100]}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={110}
+                      tick={{ fontSize: 13 }}
+                    />
+                    <Tooltip
+                      formatter={(value: number, name: string, props: any) => [
+                        `${props.payload.value} (${value}%)`,
+                        'Lignes'
+                      ]}
+                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                    />
+                    <Bar dataKey="percentNum" radius={[0, 4, 4, 0]}>
+                      {allTagsDataWithPercent.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                      <LabelList
+                        dataKey="percent"
+                        position="right"
+                        formatter={(value: string) => `${value}%`}
+                        style={{ fontSize: 13, fontWeight: 600 }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Tableau récapitulatif */}
+              <div className="mt-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">Détail par tag</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
+                        <th className="px-4 py-3 text-left font-semibold">Tag</th>
+                        <th className="px-4 py-3 text-center font-semibold">Nombre</th>
+                        <th className="px-4 py-3 text-center font-semibold">Pourcentage</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allTagsDataWithPercent.map((item, idx) => (
+                        <tr key={idx} className={idx % 2 === 0 ? 'bg-indigo-50' : 'bg-white'}>
+                          <td className="px-4 py-3 font-medium flex items-center gap-2">
+                            <span
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: item.color }}
+                            />
+                            {item.name}
+                          </td>
+                          <td className="px-4 py-3 text-center font-semibold">{item.value}</td>
+                          <td className="px-4 py-3 text-center font-semibold">{item.percent}%</td>
+                        </tr>
+                      ))}
+                      <tr className="bg-gray-100 font-bold">
+                        <td className="px-4 py-3">Total</td>
+                        <td className="px-4 py-3 text-center">{totalAllTags}</td>
+                        <td className="px-4 py-3 text-center">100%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : activeTab === 'problems' ? (
             <>
               {/* Charts - Problèmes */}
               {currentStats.length > 0 ? (
