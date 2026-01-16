@@ -479,9 +479,34 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                 <>
                   {/* Bar Chart - Categories */}
                   <div className="bg-gray-50 rounded-xl p-6 mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                      Répartition par catégorie - {currentSubTabConfig.label}
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        Répartition par catégorie - {currentSubTabConfig.label}
+                      </h3>
+                      {/* Toggle switch */}
+                      <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+                        <button
+                          onClick={() => setChartViewMode('count')}
+                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                            chartViewMode === 'count'
+                              ? 'bg-indigo-600 text-white'
+                              : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          Nombre
+                        </button>
+                        <button
+                          onClick={() => setChartViewMode('percent')}
+                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                            chartViewMode === 'percent'
+                              ? 'bg-indigo-600 text-white'
+                              : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          Pourcentage
+                        </button>
+                      </div>
+                    </div>
                     <ResponsiveContainer width="100%" height={Math.max(300, problemsCategoryData.length * 40)}>
                       <BarChart
                         data={problemsCategoryData}
@@ -491,8 +516,8 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                         <XAxis
                           type="number"
-                          domain={[0, 'auto']}
-                          tickFormatter={(value) => value.toLocaleString()}
+                          domain={chartViewMode === 'percent' ? [0, 100] : [0, 'auto']}
+                          tickFormatter={(value) => chartViewMode === 'percent' ? `${value}%` : value.toLocaleString()}
                         />
                         <YAxis
                           type="category"
@@ -502,20 +527,22 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         />
                         <Tooltip
                           formatter={(value: number, name: string, props: any) => [
-                            `${value.toLocaleString()} appels (${props.payload.percent}%)`,
+                            chartViewMode === 'percent'
+                              ? `${props.payload.value} appels (${value.toFixed(1)}%)`
+                              : `${value.toLocaleString()} appels (${props.payload.percent}%)`,
                             ''
                           ]}
                           labelFormatter={(label) => label}
                           contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                         />
-                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        <Bar dataKey={chartViewMode === 'percent' ? 'percentNum' : 'value'} radius={[0, 4, 4, 0]}>
                           {problemsCategoryData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                           <LabelList
-                            dataKey="value"
+                            dataKey={chartViewMode === 'percent' ? 'percent' : 'value'}
                             position="right"
-                            formatter={(value: number) => value.toLocaleString()}
+                            formatter={(value: number | string) => chartViewMode === 'percent' ? `${value}%` : Number(value).toLocaleString()}
                             style={{ fontSize: 12, fontWeight: 600 }}
                           />
                         </Bar>
@@ -539,9 +566,34 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
               {/* Charts - Rendez-vous */}
               {/* Bar Chart - Categories */}
               <div className="bg-gray-50 rounded-xl p-6 mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                  Répartition par catégorie
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Répartition par catégorie
+                  </h3>
+                  {/* Toggle switch */}
+                  <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+                    <button
+                      onClick={() => setChartViewMode('count')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        chartViewMode === 'count'
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      Nombre
+                    </button>
+                    <button
+                      onClick={() => setChartViewMode('percent')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        chartViewMode === 'percent'
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      Pourcentage
+                    </button>
+                  </div>
+                </div>
                 <ResponsiveContainer width="100%" height={Math.max(300, appointmentsCategoryData.length * 40)}>
                   <BarChart
                     data={appointmentsCategoryData}
@@ -551,8 +603,8 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                     <XAxis
                       type="number"
-                      domain={[0, 'auto']}
-                      tickFormatter={(value) => value.toLocaleString()}
+                      domain={chartViewMode === 'percent' ? [0, 100] : [0, 'auto']}
+                      tickFormatter={(value) => chartViewMode === 'percent' ? `${value}%` : value.toLocaleString()}
                     />
                     <YAxis
                       type="category"
@@ -562,20 +614,22 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                     />
                     <Tooltip
                       formatter={(value: number, name: string, props: any) => [
-                        `${value.toLocaleString()} rendez-vous (${props.payload.percent}%)`,
+                        chartViewMode === 'percent'
+                          ? `${props.payload.value} rendez-vous (${value.toFixed(1)}%)`
+                          : `${value.toLocaleString()} rendez-vous (${props.payload.percent}%)`,
                         ''
                       ]}
                       labelFormatter={(label) => label}
                       contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                     />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey={chartViewMode === 'percent' ? 'percentNum' : 'value'} radius={[0, 4, 4, 0]}>
                       {appointmentsCategoryData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                       <LabelList
-                        dataKey="value"
+                        dataKey={chartViewMode === 'percent' ? 'percent' : 'value'}
                         position="right"
-                        formatter={(value: number) => value.toLocaleString()}
+                        formatter={(value: number | string) => chartViewMode === 'percent' ? `${value}%` : Number(value).toLocaleString()}
                         style={{ fontSize: 12, fontWeight: 600 }}
                       />
                     </Bar>
