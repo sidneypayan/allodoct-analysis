@@ -65,6 +65,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
   const { summary, appointments_statistics, excel_file_base64 } = data
   const [activeTab, setActiveTab] = useState<'overview' | 'problems' | 'appointments'>('overview')
   const [activeSubTab, setActiveSubTab] = useState<ProblemsSubTab>('exam_not_found')
+  const [chartViewMode, setChartViewMode] = useState<'count' | 'percent'>('count')
 
   // Préparer les données pour l'histogramme de répartition par tag (dynamique)
   // Utilise les noms de tags en anglais (non traduits)
@@ -365,9 +366,34 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
             <>
               {/* Histogramme de répartition par tag */}
               <div className="bg-gray-50 rounded-xl p-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                  Nombre d'appels par catégories
-                </h3>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Nombre d'appels par catégories
+                  </h3>
+                  {/* Toggle switch */}
+                  <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+                    <button
+                      onClick={() => setChartViewMode('count')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        chartViewMode === 'count'
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      Nombre
+                    </button>
+                    <button
+                      onClick={() => setChartViewMode('percent')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        chartViewMode === 'percent'
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      Pourcentage
+                    </button>
+                  </div>
+                </div>
                 <ResponsiveContainer width="100%" height={Math.max(450, allTagsDataWithPercent.length * 45)}>
                   <BarChart
                     data={allTagsDataWithPercent}
@@ -377,8 +403,8 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                     <XAxis
                       type="number"
-                      domain={[0, 100]}
-                      tickFormatter={(value) => `${value}%`}
+                      domain={chartViewMode === 'percent' ? [0, 100] : [0, 'auto']}
+                      tickFormatter={(value) => chartViewMode === 'percent' ? `${value}%` : value.toLocaleString()}
                     />
                     <YAxis
                       type="category"
@@ -388,19 +414,21 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                     />
                     <Tooltip
                       formatter={(value: number, name: string, props: any) => [
-                        `${props.payload.value} appels (${value.toFixed(1)}%)`,
+                        chartViewMode === 'percent'
+                          ? `${props.payload.value} appels (${value.toFixed(1)}%)`
+                          : `${value.toLocaleString()} appels (${props.payload.percent}%)`,
                         props.payload.name
                       ]}
                       contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                     />
-                    <Bar dataKey="percentNum" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey={chartViewMode === 'percent' ? 'percentNum' : 'value'} radius={[0, 4, 4, 0]}>
                       {allTagsDataWithPercent.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                       <LabelList
-                        dataKey="percent"
+                        dataKey={chartViewMode === 'percent' ? 'percent' : 'value'}
                         position="right"
-                        formatter={(value: string) => `${value}%`}
+                        formatter={(value: number | string) => chartViewMode === 'percent' ? `${value}%` : value.toLocaleString()}
                         style={{ fontSize: 13, fontWeight: 600 }}
                       />
                     </Bar>
