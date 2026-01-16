@@ -226,22 +226,31 @@ import os
 # Créer des DataFrames vides avec les colonnes nécessaires
 empty_columns = ['Id', 'Id Externe', 'Statut', 'Tag', 'Examen Identifié', 'Durée']
 
+# Liste de tous les tags à traiter pour les problèmes
+PROBLEM_TAGS = [
+    'exam_not_found',
+    'exam_not_authorized',
+    'availabilies_provided',
+    'exam_found',
+    'multiple_appointments_cancelled',
+    'no_availabilities_found'
+]
+
 # Charger le fichier data.xlsx
 if os.path.exists('data.xlsx'):
     df_all_data = pd.read_excel('data.xlsx')
     print(f"✅ Fichier chargé: {len(df_all_data)} lignes au total")
 
-    # Filtrer par Tag pour créer les 3 dataframes
-    # Pour not_found et not_authorized: on filtre aussi par Statut (Transféré ou Décroché)
-    df_not_found = df_all_data[
-        (df_all_data['Tag'] == 'exam_not_found') &
-        (df_all_data['Statut'].isin(['Transféré', 'Décroché']))
-    ].copy()
+    # Créer un dictionnaire pour stocker les DataFrames par tag
+    dfs_by_tag = {}
 
-    df_not_authorized = df_all_data[
-        (df_all_data['Tag'] == 'exam_not_authorized') &
-        (df_all_data['Statut'].isin(['Transféré', 'Décroché']))
-    ].copy()
+    # Filtrer par Tag pour créer les DataFrames
+    # Pour tous les tags de problèmes: on filtre aussi par Statut (Transféré ou Décroché)
+    for tag in PROBLEM_TAGS:
+        dfs_by_tag[tag] = df_all_data[
+            (df_all_data['Tag'] == tag) &
+            (df_all_data['Statut'].isin(['Transféré', 'Décroché']))
+        ].copy()
 
     # Pour appointment_created: on prend TOUTES les lignes (pas de filtre Statut)
     df_appointment_created = df_all_data[
@@ -250,19 +259,17 @@ if os.path.exists('data.xlsx'):
 
 else:
     print("⚠️ Fichier data.xlsx absent - création de DataFrames vides")
-    df_not_found = pd.DataFrame(columns=empty_columns)
-    df_not_authorized = pd.DataFrame(columns=empty_columns)
+    dfs_by_tag = {tag: pd.DataFrame(columns=empty_columns) for tag in PROBLEM_TAGS}
     df_appointment_created = pd.DataFrame(columns=empty_columns)
 
-# PAS DE FILTRE pour appointment_created - on prend TOUTES les lignes pour le calcul de durée
-print(f"Not Found (Transféré + Décroché): {len(df_not_found)} appels")
-print(f"Not Authorized (Transféré + Décroché): {len(df_not_authorized)} appels")
+# Afficher les compteurs
+for tag in PROBLEM_TAGS:
+    print(f"{tag} (Transféré + Décroché): {len(dfs_by_tag[tag])} appels")
 print(f"Appointment Created (TOUTES les lignes): {len(df_appointment_created)} appels")
 
 # Vérifier si la colonne Durée existe et la convertir en nombre
-# IMPORTANT: La durée est extraite depuis TOUTES les lignes de appointment_created
-for df in [df_not_found, df_not_authorized]:
-    df['Durée'] = 0
+for tag in PROBLEM_TAGS:
+    dfs_by_tag[tag]['Durée'] = 0
 
 if 'Durée' in df_appointment_created.columns:
     df_appointment_created['Durée'] = pd.to_numeric(df_appointment_created['Durée'], errors='coerce').fillna(0)
@@ -278,49 +285,40 @@ for idx, row in df_appointment_created.iterrows():
 
 print(f"Durées extraites pour {len(duration_map)} appels uniques")
 
-# Ajouter les tags
-df_not_found['tag_type'] = 'exam_not_found'
-df_not_authorized['tag_type'] = 'exam_not_authorized'
-
-# Combiner UNIQUEMENT not_found et not_authorized pour l'analyse des examens
-df_all = pd.concat([df_not_found, df_not_authorized], ignore_index=True)
-
 print("🔍 Analyse des examens...")
 
-# Créer deux listes détaillées séparées : une pour les problèmes, une pour les succès
-detailed_results_problems = []
+# Créer des dictionnaires pour stocker les résultats détaillés par tag
+detailed_results_by_tag = {tag: [] for tag in PROBLEM_TAGS}
 detailed_results_appointments = []
 
-# Analyser les problèmes (not_found et not_authorized)
-# On compte les appels, pas les examens individuels
-for idx, row in df_all.iterrows():
-    # Récupérer la durée depuis duration_map basé sur l'Id de l'appel
-    call_id = str(row.get('Id', ''))
-    duration = duration_map.get(call_id, 0)
+# Analyser chaque tag de problème séparément
+for tag in PROBLEM_TAGS:
+    df_tag = dfs_by_tag[tag]
+    for idx, row in df_tag.iterrows():
+        # Récupérer la durée depuis duration_map basé sur l'Id de l'appel
+        call_id = str(row.get('Id', ''))
+        duration = duration_map.get(call_id, 0)
 
-    # Prendre le premier examen pour déterminer la catégorie de l'appel
-    exams = parse_exam_identified(row['Examen Identifié'])
-    first_exam = exams[0] if exams else ''
-    category = categorize_exam(first_exam)
+        # Prendre le premier examen pour déterminer la catégorie de l'appel
+        exams = parse_exam_identified(row['Examen Identifié'])
+        first_exam = exams[0] if exams else ''
+        category = categorize_exam(first_exam)
 
-    detailed_results_problems.append({
-        'Examen Identifié': first_exam,
-        'Examen Normalisé': normalize_exam_name(first_exam),
-        'Catégorie': category,
-        'Tag': row['tag_type'],
-        'Id Appel': row['Id'],
-        'Id Externe': row['Id Externe'],
-        'Durée': duration
-    })
+        detailed_results_by_tag[tag].append({
+            'Examen Identifié': first_exam,
+            'Examen Normalisé': normalize_exam_name(first_exam),
+            'Catégorie': category,
+            'Tag': tag,
+            'Id Appel': row['Id'],
+            'Id Externe': row['Id Externe'],
+            'Durée': duration
+        })
 
 # Analyser les rendez-vous créés (appointment_created)
-# On compte les appels, pas les examens individuels
-# PAS DE FILTRE pour les rendez-vous créés - toutes les lignes sont valides
 for idx, row in df_appointment_created.iterrows():
     call_id = str(row.get('Id', ''))
-    duration = row.get('Durée', 0)  # Durée directe du fichier appointment_created
+    duration = row.get('Durée', 0)
 
-    # Prendre le premier examen pour déterminer la catégorie de l'appel
     exams = parse_exam_identified(row['Examen Identifié'])
     first_exam = exams[0] if exams else ''
     category = categorize_exam(first_exam, apply_filter=False)
@@ -335,92 +333,84 @@ for idx, row in df_appointment_created.iterrows():
         'Durée': duration
     })
 
-df_detailed_problems = pd.DataFrame(detailed_results_problems)
-df_detailed_appointments = pd.DataFrame(detailed_results_appointments)
+# Créer les DataFrames détaillés par tag
+df_detailed_by_tag = {}
+for tag in PROBLEM_TAGS:
+    if detailed_results_by_tag[tag]:
+        df_detailed_by_tag[tag] = pd.DataFrame(detailed_results_by_tag[tag])
+    else:
+        df_detailed_by_tag[tag] = pd.DataFrame(columns=['Examen Identifié', 'Examen Normalisé', 'Catégorie', 'Tag', 'Id Appel', 'Id Externe', 'Durée'])
 
-# S'assurer que les DataFrames ont les colonnes nécessaires même s'ils sont vides
-if df_detailed_problems.empty:
-    df_detailed_problems = pd.DataFrame(columns=['Examen Identifié', 'Examen Normalisé', 'Catégorie', 'Tag', 'Id Appel', 'Id Externe', 'Durée'])
+df_detailed_appointments = pd.DataFrame(detailed_results_appointments)
 
 if df_detailed_appointments.empty:
     df_detailed_appointments = pd.DataFrame(columns=['Examen Identifié', 'Examen Normalisé', 'Catégorie', 'Tag', 'Id Appel', 'Id Externe', 'Durée'])
 
 print("📈 Génération des statistiques...")
 
-# Générer les statistiques pour LES PROBLÈMES (not_found et not_authorized)
-problems_stats = []
-valid_categories = list(CATEGORIES.keys()) + ['INTITULES INCOHERENTS', 'AUTRE', 'INCONNU']
+# Fonction pour générer des statistiques pour un tag donné
+def generate_stats_for_tag(df_detailed, tag_name):
+    stats = []
+    valid_categories = list(CATEGORIES.keys()) + ['INTITULES INCOHERENTS', 'AUTRE', 'INCONNU']
 
-for category in valid_categories:
-    df_cat = df_detailed_problems[df_detailed_problems['Catégorie'] == category]
+    for category in valid_categories:
+        df_cat = df_detailed[df_detailed['Catégorie'] == category]
 
-    total = len(df_cat)
-    if total == 0:
-        continue
-
-    not_found = len(df_cat[df_cat['Tag'] == 'exam_not_found'])
-    not_authorized = len(df_cat[df_cat['Tag'] == 'exam_not_authorized'])
-    total_duration = int(df_cat['Durée'].sum())
-
-    # Regrouper les examens par nom normalisé (ignorer casse et accents)
-    exams_list = []
-    exams_with_ids = []
-
-    # Grouper par 'Examen Normalisé'
-    for normalized_name, df_exam_group in df_cat.groupby('Examen Normalisé'):
-        if not normalized_name:  # Ignorer les vides
+        total = len(df_cat)
+        if total == 0:
             continue
 
-        # Prendre le nom original le plus fréquent (pour l'affichage) et le nettoyer
-        original_name = clean_exam_name(df_exam_group['Examen Identifié'].mode()[0])
+        total_duration = int(df_cat['Durée'].sum())
 
-        # Ignorer les intitulés trop vagues pour l'affichage
-        if is_exam_too_vague(original_name):
-            continue
+        # Regrouper les examens par nom normalisé
+        exams_list = []
 
-        count = len(df_exam_group)
-        nf_count = len(df_exam_group[df_exam_group['Tag'] == 'exam_not_found'])
-        na_count = len(df_exam_group[df_exam_group['Tag'] == 'exam_not_authorized'])
-        exam_duration = int(df_exam_group['Durée'].sum())
+        for normalized_name, df_exam_group in df_cat.groupby('Examen Normalisé'):
+            if not normalized_name:
+                continue
 
-        ids = df_exam_group['Id Externe'].dropna().astype(str).tolist()
+            original_name = clean_exam_name(df_exam_group['Examen Identifié'].mode()[0])
 
-        exams_list.append({
-            'name': original_name,
-            'total': int(count),
-            'not_found': int(nf_count),
-            'not_authorized': int(na_count),
-            'ids': ids,
-            'duration': exam_duration
+            if is_exam_too_vague(original_name):
+                continue
+
+            count = len(df_exam_group)
+            exam_duration = int(df_exam_group['Durée'].sum())
+            ids = df_exam_group['Id Externe'].dropna().astype(str).tolist()
+
+            exams_list.append({
+                'name': original_name,
+                'total': int(count),
+                'not_found': 0,
+                'not_authorized': 0,
+                'ids': ids,
+                'duration': exam_duration
+            })
+
+        exams_list.sort(key=lambda x: x['total'], reverse=True)
+
+        stats.append({
+            'category': category,
+            'total': int(total),
+            'exam_not_found': 0,
+            'exam_not_authorized': 0,
+            'total_duration': total_duration,
+            'all_exams': '',
+            'exams': exams_list
         })
 
-        ids_str = '|'.join(ids)
-        exams_with_ids.append(f"{original_name}§{count} (NF:{nf_count}|NA:{na_count})§{ids_str}")
+    return stats
 
-    # Trier par total décroissant
-    exams_list.sort(key=lambda x: x['total'], reverse=True)
-    exams_with_ids.sort(key=lambda x: int(x.split('§')[1].split(' ')[0]), reverse=True)
-
-    all_exams_str = '\\n'.join(exams_with_ids)
-
-    problems_stats.append({
-        'category': category,
-        'total': int(total),
-        'exam_not_found': int(not_found),
-        'exam_not_authorized': int(not_authorized),
-        'total_duration': total_duration,
-        'all_exams': all_exams_str,
-        'exams': exams_list
-    })
+# Générer les statistiques séparées pour chaque tag de problème
+stats_by_tag = {}
+for tag in PROBLEM_TAGS:
+    stats_by_tag[tag] = generate_stats_for_tag(df_detailed_by_tag[tag], tag)
 
 # Générer les statistiques pour LES RENDEZ-VOUS CRÉÉS (appointment_created)
 appointments_stats = []
+valid_categories_appt = list(CATEGORIES.keys()) + ['AUTRE', 'INCONNU']
 
-for category in valid_categories:
-    # Pas de catégorie INTITULES INCOHERENTS pour les rendez-vous créés
-    if category == 'INTITULES INCOHERENTS':
-        continue
-
+for category in valid_categories_appt:
     df_cat = df_detailed_appointments[df_detailed_appointments['Catégorie'] == category]
 
     total = len(df_cat)
@@ -430,7 +420,6 @@ for category in valid_categories:
     total_duration = int(df_cat['Durée'].sum())
     average_duration = int(df_cat['Durée'].mean()) if total > 0 else 0
 
-    # Regrouper les examens par nom normalisé
     exams_list = []
 
     for normalized_name, df_exam_group in df_cat.groupby('Examen Normalisé'):
@@ -446,14 +435,13 @@ for category in valid_categories:
         exams_list.append({
             'name': original_name,
             'total': int(count),
-            'not_found': 0,  # Pas de not_found pour les succès
-            'not_authorized': 0,  # Pas de not_authorized pour les succès
+            'not_found': 0,
+            'not_authorized': 0,
             'ids': ids,
             'duration': exam_duration,
             'average_duration': exam_avg_duration
         })
 
-    # Trier par total décroissant
     exams_list.sort(key=lambda x: x['total'], reverse=True)
 
     appointments_stats.append({
@@ -468,30 +456,38 @@ for category in valid_categories:
     })
 
 # Calculer le résumé
-total_calls = len(df_not_found) + len(df_not_authorized)
-# Compter les examens affichés dans les tableaux (hors INTITULES INCOHERENTS)
-unique_exams = sum(len(stat['exams']) for stat in problems_stats if stat['category'] != 'INTITULES INCOHERENTS')
-bugs_detected = len(df_detailed_problems[df_detailed_problems['Catégorie'] == 'INTITULES INCOHERENTS'])
-# Calculer la durée totale UNIQUEMENT depuis appointment_created
+total_calls = sum(len(dfs_by_tag[tag]) for tag in PROBLEM_TAGS)
+unique_exams = sum(len(stat['exams']) for stats in stats_by_tag.values() for stat in stats if stat['category'] != 'INTITULES INCOHERENTS')
+bugs_detected = sum(len(df_detailed_by_tag[tag][df_detailed_by_tag[tag]['Catégorie'] == 'INTITULES INCOHERENTS']) for tag in PROBLEM_TAGS)
 total_duration = int(df_appointment_created['Durée'].sum())
-# Calculer le nombre de rendez-vous créés (nombre de lignes dans appointment_created)
 appointments_created = len(df_appointment_created)
 
 summary = {
     'total_calls': int(total_calls),
     'unique_exams': int(unique_exams),
-    'categories_found': len(problems_stats),
+    'categories_found': sum(len(stats) for stats in stats_by_tag.values()),
     'bugs_detected': int(bugs_detected),
     'total_duration': total_duration,
-    'appointments_created': int(appointments_created)
+    'appointments_created': int(appointments_created),
+    'exam_not_found_count': int(len(dfs_by_tag['exam_not_found'])),
+    'exam_not_authorized_count': int(len(dfs_by_tag['exam_not_authorized'])),
+    'availabilies_provided_count': int(len(dfs_by_tag['availabilies_provided'])),
+    'exam_found_count': int(len(dfs_by_tag['exam_found'])),
+    'multiple_appointments_cancelled_count': int(len(dfs_by_tag['multiple_appointments_cancelled'])),
+    'no_availabilities_found_count': int(len(dfs_by_tag['no_availabilities_found']))
 }
 
 print("✅ Analyse terminée !")
 
-# Résultat JSON (Excel sera généré côté JavaScript)
+# Résultat JSON avec statistiques séparées par tag
 result = {
     'summary': summary,
-    'problems_statistics': problems_stats,
+    'exam_not_found_statistics': stats_by_tag['exam_not_found'],
+    'exam_not_authorized_statistics': stats_by_tag['exam_not_authorized'],
+    'availabilies_provided_statistics': stats_by_tag['availabilies_provided'],
+    'exam_found_statistics': stats_by_tag['exam_found'],
+    'multiple_appointments_cancelled_statistics': stats_by_tag['multiple_appointments_cancelled'],
+    'no_availabilities_found_statistics': stats_by_tag['no_availabilities_found'],
     'appointments_statistics': appointments_stats
 }
 
@@ -503,7 +499,7 @@ json.dumps(result)
     const result = JSON.parse(resultJson)
 
     console.log('📊 Génération du fichier Excel avec JavaScript...')
-    const excelBase64 = generateExcelFile(result.problems_statistics, result.appointments_statistics, result.summary)
+    const excelBase64 = generateExcelFile(result, result.summary)
 
     const finalResult: AnalysisResult = {
       ...result,

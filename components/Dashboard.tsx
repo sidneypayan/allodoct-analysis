@@ -2,7 +2,7 @@
 
 import { Download, RotateCcw, TrendingUp, AlertTriangle, CheckCircle, FileSpreadsheet, Clock, Calendar } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
-import { AnalysisResult } from '@/lib/types'
+import { AnalysisResult, CategoryStats } from '@/lib/types'
 import InteractiveTable from './InteractiveTable'
 import { useState } from 'react'
 
@@ -13,7 +13,18 @@ interface DashboardProps {
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#6366f1']
 
-// Fonction pour formater la durée en format lisible
+// Configuration des sous-onglets pour les problèmes
+type ProblemsSubTab = 'exam_not_found' | 'exam_not_authorized' | 'availabilies_provided' | 'exam_found' | 'multiple_appointments_cancelled' | 'no_availabilities_found'
+
+const SUBTABS_CONFIG: { key: ProblemsSubTab; label: string; color: string; bgColor: string }[] = [
+  { key: 'exam_not_found', label: 'Non trouvés', color: 'text-red-700', bgColor: 'bg-red-100' },
+  { key: 'exam_not_authorized', label: 'Non autorisés', color: 'text-orange-700', bgColor: 'bg-orange-100' },
+  { key: 'availabilies_provided', label: 'Dispo proposées', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+  { key: 'exam_found', label: 'Exam trouvé', color: 'text-purple-700', bgColor: 'bg-purple-100' },
+  { key: 'multiple_appointments_cancelled', label: 'RDV annulés', color: 'text-pink-700', bgColor: 'bg-pink-100' },
+  { key: 'no_availabilities_found', label: 'Pas de dispo', color: 'text-gray-700', bgColor: 'bg-gray-200' },
+]
+
 function formatDuration(seconds: number): string {
   if (seconds < 60) {
     return `${seconds}s`
@@ -30,27 +41,59 @@ function formatDuration(seconds: number): string {
 }
 
 export default function Dashboard({ data, onReset }: DashboardProps) {
-  const { summary, problems_statistics, appointments_statistics, excel_file_base64 } = data
+  const { summary, appointments_statistics, excel_file_base64 } = data
   const [activeTab, setActiveTab] = useState<'problems' | 'appointments'>('appointments')
+  const [activeSubTab, setActiveSubTab] = useState<ProblemsSubTab>('exam_not_found')
 
-  // Préparer les données pour les graphiques - PROBLÈMES
-  const problemsCategoryData = problems_statistics
+  // Fonction pour obtenir les statistiques du sous-onglet actif
+  const getActiveStatistics = (): CategoryStats[] => {
+    switch (activeSubTab) {
+      case 'exam_not_found':
+        return data.exam_not_found_statistics || []
+      case 'exam_not_authorized':
+        return data.exam_not_authorized_statistics || []
+      case 'availabilies_provided':
+        return data.availabilies_provided_statistics || []
+      case 'exam_found':
+        return data.exam_found_statistics || []
+      case 'multiple_appointments_cancelled':
+        return data.multiple_appointments_cancelled_statistics || []
+      case 'no_availabilities_found':
+        return data.no_availabilities_found_statistics || []
+      default:
+        return []
+    }
+  }
+
+  // Fonction pour obtenir le compteur du sous-onglet
+  const getSubTabCount = (key: ProblemsSubTab): number => {
+    switch (key) {
+      case 'exam_not_found':
+        return summary.exam_not_found_count || 0
+      case 'exam_not_authorized':
+        return summary.exam_not_authorized_count || 0
+      case 'availabilies_provided':
+        return summary.availabilies_provided_count || 0
+      case 'exam_found':
+        return summary.exam_found_count || 0
+      case 'multiple_appointments_cancelled':
+        return summary.multiple_appointments_cancelled_count || 0
+      case 'no_availabilities_found':
+        return summary.no_availabilities_found_count || 0
+      default:
+        return 0
+    }
+  }
+
+  const currentStats = getActiveStatistics()
+
+  // Préparer les données pour les graphiques - PROBLÈMES (sous-onglet actif)
+  const problemsCategoryData = currentStats
     .map(stat => ({
       name: stat.category,
       value: stat.total
     }))
     .sort((a, b) => b.value - a.value)
-
-  const tagData = [
-    {
-      name: 'Non trouvés',
-      value: problems_statistics.reduce((sum, stat) => sum + stat.exam_not_found, 0)
-    },
-    {
-      name: 'Non autorisés',
-      value: problems_statistics.reduce((sum, stat) => sum + stat.exam_not_authorized, 0)
-    }
-  ]
 
   // Préparer les données pour les graphiques - RENDEZ-VOUS
   const appointmentsCategoryData = appointments_statistics
@@ -62,20 +105,17 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
 
   const handleDownload = () => {
     try {
-      // Décoder le base64
       const binaryString = atob(excel_file_base64)
       const bytes = new Uint8Array(binaryString.length)
-      
+
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i)
       }
-      
-      // Créer le blob Excel
-      const blob = new Blob([bytes], { 
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+
+      const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       })
-      
-      // Créer un lien de téléchargement
+
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -89,6 +129,8 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
       alert('Erreur lors du téléchargement du fichier')
     }
   }
+
+  const currentSubTabConfig = SUBTABS_CONFIG.find(t => t.key === activeSubTab)!
 
   return (
     <div className="space-y-6">
@@ -124,7 +166,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            Rendez-vous créés
+            Rendez-vous créés ({summary.appointments_created || 0})
           </button>
           <button
             onClick={() => setActiveTab('problems')}
@@ -134,37 +176,71 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            Rendez-vous non créés
+            Rendez-vous non créés ({summary.total_calls || 0})
           </button>
         </div>
+
+        {/* Sub-tabs for problems */}
+        {activeTab === 'problems' && (
+          <div className="px-4 py-3 bg-gray-50 border-b">
+            <div className="flex flex-wrap gap-2">
+              {SUBTABS_CONFIG.map((subtab) => {
+                const count = getSubTabCount(subtab.key)
+                const isActive = activeSubTab === subtab.key
+                return (
+                  <button
+                    key={subtab.key}
+                    onClick={() => setActiveSubTab(subtab.key)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      isActive
+                        ? `${subtab.bgColor} ${subtab.color} ring-2 ring-offset-1 ring-gray-300`
+                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    {subtab.label} ({count})
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {activeTab === 'problems' ? (
           <>
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+            <div className={`bg-white rounded-xl shadow-lg p-6 border-l-4 ${
+              activeSubTab === 'exam_not_found' ? 'border-red-500' :
+              activeSubTab === 'exam_not_authorized' ? 'border-orange-500' :
+              activeSubTab === 'availabilies_provided' ? 'border-blue-500' :
+              activeSubTab === 'exam_found' ? 'border-purple-500' :
+              activeSubTab === 'multiple_appointments_cancelled' ? 'border-pink-500' :
+              'border-gray-500'
+            }`}>
               <div className="flex items-center justify-between mb-2">
-                <p className="text-gray-600 text-sm font-medium">Appels transférés/décrochés</p>
-                <FileSpreadsheet className="w-5 h-5 text-blue-500" />
+                <p className="text-gray-600 text-sm font-medium">Appels ({currentSubTabConfig.label})</p>
+                <FileSpreadsheet className="w-5 h-5 text-gray-500" />
               </div>
-              <p className="text-3xl font-bold text-gray-900">{summary.total_calls}</p>
+              <p className="text-3xl font-bold text-gray-900">{getSubTabCount(activeSubTab)}</p>
             </div>
 
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-gray-600 text-sm font-medium">Intitulés d'examens cohérents</p>
+                <p className="text-gray-600 text-sm font-medium">Catégories d'examens</p>
                 <TrendingUp className="w-5 h-5 text-purple-500" />
               </div>
-              <p className="text-3xl font-bold text-gray-900">{summary.unique_exams}</p>
+              <p className="text-3xl font-bold text-gray-900">{currentStats.length}</p>
             </div>
 
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-gray-600 text-sm font-medium">Intitulés d'examens incohérents</p>
+                <p className="text-gray-600 text-sm font-medium">Intitulés incohérents</p>
                 <AlertTriangle className="w-5 h-5 text-red-500" />
               </div>
-              <p className="text-3xl font-bold text-gray-900">{summary.bugs_detected}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {currentStats.find(s => s.category === 'INTITULES INCOHERENTS')?.total || 0}
+              </p>
             </div>
           </>
         ) : (
@@ -202,159 +278,111 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
           {activeTab === 'problems' ? (
             <>
               {/* Charts - Problèmes */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                {/* Pie Chart - Categories */}
-                <div className="bg-gray-50 rounded-xl p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                    Répartition par catégorie
-                  </h3>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <PieChart>
-                      <Pie
-                        data={problemsCategoryData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={70}
-                        outerRadius={110}
-                        labelLine={(props) => {
-                          const { percent } = props
-                          const pct = percent * 100
-                          // Ne pas afficher la ligne si < 1%
-                          if (pct < 1) return <path d="" />
+              {currentStats.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    {/* Pie Chart - Categories */}
+                    <div className="bg-gray-50 rounded-xl p-6">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                        Répartition par catégorie - {currentSubTabConfig.label}
+                      </h3>
+                      <ResponsiveContainer width="100%" height={400}>
+                        <PieChart>
+                          <Pie
+                            data={problemsCategoryData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={70}
+                            outerRadius={110}
+                            labelLine={(props) => {
+                              const { percent } = props
+                              const pct = percent * 100
+                              if (pct < 1) return <path d="" />
+                              return (
+                                <path
+                                  d={props.points ? `M${props.points[0].x},${props.points[0].y}L${props.points[1].x},${props.points[1].y}` : ''}
+                                  stroke="#9ca3af"
+                                  strokeWidth={1}
+                                  fill="none"
+                                />
+                              )
+                            }}
+                            label={({ cx, cy, midAngle, outerRadius, percent }) => {
+                              const pct = percent * 100
+                              if (pct < 1) return null
+                              const RADIAN = Math.PI / 180
+                              const radius = outerRadius + 20
+                              const x = cx + radius * Math.cos(-midAngle * RADIAN)
+                              const y = cy + radius * Math.sin(-midAngle * RADIAN)
+                              return (
+                                <text
+                                  x={x}
+                                  y={y}
+                                  fill="#374151"
+                                  textAnchor={x > cx ? 'start' : 'end'}
+                                  dominantBaseline="central"
+                                  fontSize="13"
+                                  fontWeight="600"
+                                >
+                                  {`${pct.toFixed(0)}%`}
+                                </text>
+                              )
+                            }}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {problemsCategoryData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend
+                            verticalAlign="bottom"
+                            height={60}
+                            wrapperStyle={{ fontSize: '12px' }}
+                            formatter={(value, entry) => {
+                              const total = problemsCategoryData.reduce((sum, item) => sum + item.value, 0)
+                              const payloadValue = entry.payload?.value ?? 0
+                              const percent = total > 0 ? ((payloadValue / total) * 100).toFixed(1) : '0'
+                              return `${value} (${payloadValue} - ${percent}%)`
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
 
-                          return (
-                            <path
-                              d={props.points ? `M${props.points[0].x},${props.points[0].y}L${props.points[1].x},${props.points[1].y}` : ''}
-                              stroke="#9ca3af"
-                              strokeWidth={1}
-                              fill="none"
-                            />
-                          )
-                        }}
-                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
-                          const pct = percent * 100
-                          // Ne pas afficher si < 1%
-                          if (pct < 1) return null
+                    {/* Stats par catégorie */}
+                    <div className="bg-gray-50 rounded-xl p-6">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                        Détail par catégorie
+                      </h3>
+                      <div className="space-y-3 mt-6 max-h-[400px] overflow-y-auto">
+                        {currentStats
+                          .sort((a, b) => b.total - a.total)
+                          .map((stat, idx) => (
+                            <div key={idx} className="flex justify-between items-center p-3 bg-white rounded-lg">
+                              <span className={`font-medium ${stat.category === 'INTITULES INCOHERENTS' ? 'text-red-600' : 'text-gray-700'}`}>
+                                {stat.category}
+                              </span>
+                              <span className="text-lg font-bold text-gray-900">
+                                {stat.total}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
 
-                          const RADIAN = Math.PI / 180
-                          const radius = outerRadius + 20
-                          const x = cx + radius * Math.cos(-midAngle * RADIAN)
-                          const y = cy + radius * Math.sin(-midAngle * RADIAN)
-
-                          return (
-                            <text
-                              x={x}
-                              y={y}
-                              fill="#374151"
-                              textAnchor={x > cx ? 'start' : 'end'}
-                              dominantBaseline="central"
-                              fontSize="13"
-                              fontWeight="600"
-                            >
-                              {`${pct.toFixed(0)}%`}
-                            </text>
-                          )
-                        }}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {problemsCategoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend
-                        verticalAlign="bottom"
-                        height={60}
-                        wrapperStyle={{ fontSize: '12px' }}
-                        formatter={(value, entry) => {
-                          const total = problemsCategoryData.reduce((sum, item) => sum + item.value, 0)
-                          const payloadValue = entry.payload?.value ?? 0
-                          const percent = ((payloadValue / total) * 100).toFixed(1)
-                          return `${value} (${payloadValue} - ${percent}%)`
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {/* Interactive Table - Problèmes */}
+                  <InteractiveTable statistics={currentStats} />
+                </>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg">Aucune donnée pour ce tag</p>
+                  <p className="text-sm mt-2">Sélectionnez un autre sous-onglet ou vérifiez votre fichier d'entrée</p>
                 </div>
-
-                {/* Pie Chart - Tags */}
-                <div className="bg-gray-50 rounded-xl p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                    Non trouvés vs Non autorisés
-                  </h3>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <PieChart>
-                      <Pie
-                        data={tagData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={70}
-                        outerRadius={110}
-                        labelLine={(props) => {
-                          const { percent } = props
-                          const pct = percent * 100
-                          // Ne pas afficher la ligne si < 1%
-                          if (pct < 1) return <path d="" />
-
-                          return (
-                            <path
-                              d={props.points ? `M${props.points[0].x},${props.points[0].y}L${props.points[1].x},${props.points[1].y}` : ''}
-                              stroke="#9ca3af"
-                              strokeWidth={1}
-                              fill="none"
-                            />
-                          )
-                        }}
-                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-                          const pct = percent * 100
-                          // Ne pas afficher si < 1%
-                          if (pct < 1) return null
-
-                          const RADIAN = Math.PI / 180
-                          const radius = outerRadius + 20
-                          const x = cx + radius * Math.cos(-midAngle * RADIAN)
-                          const y = cy + radius * Math.sin(-midAngle * RADIAN)
-
-                          return (
-                            <text
-                              x={x}
-                              y={y}
-                              fill="#374151"
-                              textAnchor={x > cx ? 'start' : 'end'}
-                              dominantBaseline="central"
-                              fontSize="13"
-                              fontWeight="600"
-                            >
-                              {`${pct.toFixed(0)}%`}
-                            </text>
-                          )
-                        }}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        <Cell fill="#ef4444" />
-                        <Cell fill="#f59e0b" />
-                      </Pie>
-                      <Tooltip />
-                      <Legend
-                        verticalAlign="bottom"
-                        height={60}
-                        wrapperStyle={{ fontSize: '12px' }}
-                        formatter={(value, entry) => {
-                          const total = tagData.reduce((sum, item) => sum + item.value, 0)
-                          const payloadValue = entry.payload?.value ?? 0
-                          const percent = ((payloadValue / total) * 100).toFixed(1)
-                          return `${value} (${payloadValue} - ${percent}%)`
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Interactive Table - Problèmes */}
-              <InteractiveTable statistics={problems_statistics} />
+              )}
             </>
           ) : (
             <>
@@ -376,9 +404,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         labelLine={(props) => {
                           const { percent } = props
                           const pct = percent * 100
-                          // Ne pas afficher la ligne si < 1%
                           if (pct < 1) return <path d="" />
-
                           return (
                             <path
                               d={props.points ? `M${props.points[0].x},${props.points[0].y}L${props.points[1].x},${props.points[1].y}` : ''}
@@ -388,16 +414,13 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                             />
                           )
                         }}
-                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                        label={({ cx, cy, midAngle, outerRadius, percent }) => {
                           const pct = percent * 100
-                          // Ne pas afficher si < 1%
                           if (pct < 1) return null
-
                           const RADIAN = Math.PI / 180
                           const radius = outerRadius + 20
                           const x = cx + radius * Math.cos(-midAngle * RADIAN)
                           const y = cy + radius * Math.sin(-midAngle * RADIAN)
-
                           return (
                             <text
                               x={x}
@@ -427,7 +450,7 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
                         formatter={(value, entry) => {
                           const total = appointmentsCategoryData.reduce((sum, item) => sum + item.value, 0)
                           const payloadValue = entry.payload?.value ?? 0
-                          const percent = ((payloadValue / total) * 100).toFixed(1)
+                          const percent = total > 0 ? ((payloadValue / total) * 100).toFixed(1) : '0'
                           return `${value} (${payloadValue} - ${percent}%)`
                         }}
                       />

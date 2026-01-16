@@ -119,22 +119,6 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
               >
                 Total <SortIcon field="total" />
               </th>
-              {!isAppointments && (
-                <>
-                  <th
-                    className="px-4 py-4 text-center font-semibold cursor-pointer hover:bg-blue-800 transition-colors text-sm"
-                    onClick={() => handleSort('exam_not_found')}
-                  >
-                    Non trouvés <SortIcon field="exam_not_found" />
-                  </th>
-                  <th
-                    className="px-4 py-4 text-center font-semibold cursor-pointer hover:bg-blue-800 transition-colors text-sm"
-                    onClick={() => handleSort('exam_not_authorized')}
-                  >
-                    Non autorisés <SortIcon field="exam_not_authorized" />
-                  </th>
-                </>
-              )}
               {isAppointments && (
                 <>
                   <th
@@ -175,16 +159,6 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                   <td className="px-4 py-4 text-center font-semibold text-gray-900">
                     {stat.total}
                   </td>
-                  {!isAppointments && (
-                    <>
-                      <td className="px-4 py-4 text-center text-red-600 font-medium">
-                        {stat.exam_not_found}
-                      </td>
-                      <td className="px-4 py-4 text-center text-orange-600 font-medium">
-                        {stat.exam_not_authorized}
-                      </td>
-                    </>
-                  )}
                   {isAppointments && (
                     <>
                       <td className="px-4 py-4 text-center text-green-600 font-medium">
@@ -200,7 +174,7 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                 {/* Ligne développée avec TOUS les examens */}
                 {expandedRows.has(stat.category) && (
                   <tr className={isAppointments ? 'bg-green-100' : 'bg-blue-100'}>
-                    <td colSpan={5} className="p-0">
+                    <td colSpan={isAppointments ? 5 : 3} className="p-0">
                       <div className="bg-white overflow-y-auto max-h-[600px]">
                         {/* Tableau des examens avec colonnes alignées */}
                         <div className="overflow-x-auto">
@@ -210,12 +184,6 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                                 <th className="px-3 py-2 text-left font-semibold text-gray-700 w-12">#</th>
                                 <th className="px-3 py-2 text-left font-semibold text-gray-700">Examen</th>
                                 <th className="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap w-24">Total</th>
-                                {!isAppointments && (
-                                  <>
-                                    <th className="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap w-32">Non trouvés</th>
-                                    <th className="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap w-32">Non autorisés</th>
-                                  </>
-                                )}
                                 {isAppointments && (
                                   <>
                                     <th className="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap w-32">Durée totale</th>
@@ -227,7 +195,6 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                             <tbody>
                               {stat.exams && stat.exams
                                 .filter(exam =>
-                                  // Filtrer les examens par le terme de recherche
                                   exam.name.toLowerCase().includes(searchTerm.toLowerCase())
                                 )
                                 .map((exam, idx) => (
@@ -248,16 +215,6 @@ export default function InteractiveTable({ statistics, isAppointments = false }:
                                   <td className="px-3 py-2 text-center font-semibold text-gray-900">
                                     {exam.total}
                                   </td>
-                                  {!isAppointments && (
-                                    <>
-                                      <td className="px-3 py-2 text-center font-medium text-red-600">
-                                        {exam.not_found}
-                                      </td>
-                                      <td className="px-3 py-2 text-center font-medium text-orange-600">
-                                        {exam.not_authorized}
-                                      </td>
-                                    </>
-                                  )}
                                   {isAppointments && (
                                     <>
                                       <td className="px-3 py-2 text-center font-medium text-green-600">

@@ -20,6 +20,10 @@ interface UploadedFile {
     appointment_created: number
     exam_not_found: number
     exam_not_authorized: number
+    availabilies_provided: number
+    exam_found: number
+    multiple_appointments_cancelled: number
+    no_availabilities_found: number
   }
 }
 
@@ -54,7 +58,7 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
     }
   }
 
-  const validateAndCountTags = async (file: File): Promise<{ appointment_created: number, exam_not_found: number, exam_not_authorized: number } | null> => {
+  const validateAndCountTags = async (file: File): Promise<UploadedFile['stats'] | null> => {
     try {
       const arrayBuffer = await file.arrayBuffer()
       const workbook = XLSX.read(arrayBuffer, { type: 'array' })
@@ -70,7 +74,11 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
       const stats = {
         appointment_created: 0,
         exam_not_found: 0,
-        exam_not_authorized: 0
+        exam_not_authorized: 0,
+        availabilies_provided: 0,
+        exam_found: 0,
+        multiple_appointments_cancelled: 0,
+        no_availabilities_found: 0
       }
 
       for (const row of data) {
@@ -80,11 +88,21 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
           stats.exam_not_found++
         } else if (row.Tag === 'exam_not_authorized') {
           stats.exam_not_authorized++
+        } else if (row.Tag === 'availabilies_provided') {
+          stats.availabilies_provided++
+        } else if (row.Tag === 'exam_found') {
+          stats.exam_found++
+        } else if (row.Tag === 'multiple_appointments_cancelled') {
+          stats.multiple_appointments_cancelled++
+        } else if (row.Tag === 'no_availabilities_found') {
+          stats.no_availabilities_found++
         }
       }
 
       // Vérifier qu'au moins un tag valide a été trouvé
-      if (stats.appointment_created + stats.exam_not_found + stats.exam_not_authorized === 0) {
+      const totalTags = stats.appointment_created + stats.exam_not_found + stats.exam_not_authorized +
+        stats.availabilies_provided + stats.exam_found + stats.multiple_appointments_cancelled + stats.no_availabilities_found
+      if (totalTags === 0) {
         return null
       }
 
@@ -118,7 +136,7 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
     if (stats) {
       setUploadedFile({ name: file.name, file, stats })
     } else {
-      setError('Impossible de valider le fichier. Vérifiez que la colonne "Tag" contient des valeurs valides : "exam_not_found", "exam_not_authorized" ou "appointment_created"')
+      setError('Impossible de valider le fichier. Vérifiez que la colonne "Tag" contient des valeurs valides.')
     }
   }
 
@@ -233,18 +251,38 @@ export default function FileUpload({ onAnalysisComplete, onAnalysisStart, onAnal
                 <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-green-300">
-              <div className="text-center">
-                <p className="text-xs text-gray-600 mb-1">Rendez-vous créés</p>
-                <p className="text-lg font-bold text-green-700">{uploadedFile.stats.appointment_created}</p>
+            <div className="mt-3 pt-3 border-t border-green-300">
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                <div className="text-center p-2 bg-green-100 rounded">
+                  <p className="text-xs text-gray-600 mb-1">RDV créés</p>
+                  <p className="text-lg font-bold text-green-700">{uploadedFile.stats.appointment_created}</p>
+                </div>
+                <div className="text-center p-2 bg-red-100 rounded">
+                  <p className="text-xs text-gray-600 mb-1">Non trouvés</p>
+                  <p className="text-lg font-bold text-red-700">{uploadedFile.stats.exam_not_found}</p>
+                </div>
+                <div className="text-center p-2 bg-orange-100 rounded">
+                  <p className="text-xs text-gray-600 mb-1">Non autorisés</p>
+                  <p className="text-lg font-bold text-orange-700">{uploadedFile.stats.exam_not_authorized}</p>
+                </div>
+                <div className="text-center p-2 bg-blue-100 rounded">
+                  <p className="text-xs text-gray-600 mb-1">Dispo proposées</p>
+                  <p className="text-lg font-bold text-blue-700">{uploadedFile.stats.availabilies_provided}</p>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-xs text-gray-600 mb-1">Non trouvés</p>
-                <p className="text-lg font-bold text-red-700">{uploadedFile.stats.exam_not_found}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-gray-600 mb-1">Non autorisés</p>
-                <p className="text-lg font-bold text-orange-700">{uploadedFile.stats.exam_not_authorized}</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="text-center p-2 bg-purple-100 rounded">
+                  <p className="text-xs text-gray-600 mb-1">Exam trouvé</p>
+                  <p className="text-lg font-bold text-purple-700">{uploadedFile.stats.exam_found}</p>
+                </div>
+                <div className="text-center p-2 bg-pink-100 rounded">
+                  <p className="text-xs text-gray-600 mb-1">RDV annulés</p>
+                  <p className="text-lg font-bold text-pink-700">{uploadedFile.stats.multiple_appointments_cancelled}</p>
+                </div>
+                <div className="text-center p-2 bg-gray-200 rounded">
+                  <p className="text-xs text-gray-600 mb-1">Pas de dispo</p>
+                  <p className="text-lg font-bold text-gray-700">{uploadedFile.stats.no_availabilities_found}</p>
+                </div>
               </div>
             </div>
           </div>

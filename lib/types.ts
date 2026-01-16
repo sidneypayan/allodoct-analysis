@@ -37,8 +37,22 @@ export interface AnalysisResult {
     bugs_detected: number
     total_duration: number  // Durée totale en secondes
     appointments_created: number  // Nombre de rendez-vous créés
+    // Compteurs par tag pour les problèmes
+    exam_not_found_count: number
+    exam_not_authorized_count: number
+    availabilies_provided_count: number
+    exam_found_count: number
+    multiple_appointments_cancelled_count: number
+    no_availabilities_found_count: number
   }
-  problems_statistics: CategoryStats[]  // Statistiques pour exam_not_found et exam_not_authorized
-  appointments_statistics: CategoryStats[]  // Statistiques pour appointment_created
+  // Statistiques séparées par tag (problèmes)
+  exam_not_found_statistics: CategoryStats[]
+  exam_not_authorized_statistics: CategoryStats[]
+  availabilies_provided_statistics: CategoryStats[]
+  exam_found_statistics: CategoryStats[]
+  multiple_appointments_cancelled_statistics: CategoryStats[]
+  no_availabilities_found_statistics: CategoryStats[]
+  // Statistiques pour les rendez-vous créés
+  appointments_statistics: CategoryStats[]
   excel_file_base64: string    // Excel encodé en base64
 }
