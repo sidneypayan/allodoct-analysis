@@ -1,7 +1,7 @@
 'use client'
 
 import { Download, RotateCcw, TrendingUp, AlertTriangle, CheckCircle, FileSpreadsheet, Clock, Calendar, BarChart3 } from 'lucide-react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts'
+import { Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts'
 import { AnalysisResult, CategoryStats } from '@/lib/types'
 import InteractiveTable from './InteractiveTable'
 import { useState } from 'react'
@@ -133,18 +133,26 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
   const currentStats = getActiveStatistics()
 
   // Préparer les données pour les graphiques - PROBLÈMES (sous-onglet actif)
+  const problemsTotal = currentStats.reduce((sum, stat) => sum + stat.total, 0)
   const problemsCategoryData = currentStats
-    .map(stat => ({
+    .map((stat, index) => ({
       name: stat.category,
-      value: stat.total
+      value: stat.total,
+      percent: problemsTotal > 0 ? ((stat.total / problemsTotal) * 100).toFixed(1) : '0',
+      percentNum: problemsTotal > 0 ? (stat.total / problemsTotal) * 100 : 0,
+      color: COLORS[index % COLORS.length]
     }))
     .sort((a, b) => b.value - a.value)
 
   // Préparer les données pour les graphiques - RENDEZ-VOUS
+  const appointmentsTotal = appointments_statistics.reduce((sum, stat) => sum + stat.total, 0)
   const appointmentsCategoryData = appointments_statistics
-    .map(stat => ({
+    .map((stat, index) => ({
       name: stat.category,
-      value: stat.total
+      value: stat.total,
+      percent: appointmentsTotal > 0 ? ((stat.total / appointmentsTotal) * 100).toFixed(1) : '0',
+      percentNum: appointmentsTotal > 0 ? (stat.total / appointmentsTotal) * 100 : 0,
+      color: COLORS[index % COLORS.length]
     }))
     .sort((a, b) => b.value - a.value)
 
@@ -469,97 +477,50 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
               {/* Charts - Problèmes */}
               {currentStats.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    {/* Pie Chart - Categories */}
-                    <div className="bg-gray-50 rounded-xl p-6">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                        Répartition par catégorie - {currentSubTabConfig.label}
-                      </h3>
-                      <ResponsiveContainer width="100%" height={400}>
-                        <PieChart>
-                          <Pie
-                            data={problemsCategoryData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={70}
-                            outerRadius={110}
-                            labelLine={(props) => {
-                              const { percent } = props
-                              const pct = percent * 100
-                              if (pct < 1) return <path d="" />
-                              return (
-                                <path
-                                  d={props.points ? `M${props.points[0].x},${props.points[0].y}L${props.points[1].x},${props.points[1].y}` : ''}
-                                  stroke="#9ca3af"
-                                  strokeWidth={1}
-                                  fill="none"
-                                />
-                              )
-                            }}
-                            label={({ cx, cy, midAngle, outerRadius, percent }) => {
-                              const pct = percent * 100
-                              if (pct < 1) return null
-                              const RADIAN = Math.PI / 180
-                              const radius = outerRadius + 20
-                              const x = cx + radius * Math.cos(-midAngle * RADIAN)
-                              const y = cy + radius * Math.sin(-midAngle * RADIAN)
-                              return (
-                                <text
-                                  x={x}
-                                  y={y}
-                                  fill="#374151"
-                                  textAnchor={x > cx ? 'start' : 'end'}
-                                  dominantBaseline="central"
-                                  fontSize="13"
-                                  fontWeight="600"
-                                >
-                                  {`${pct.toFixed(0)}%`}
-                                </text>
-                              )
-                            }}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {problemsCategoryData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                          <Legend
-                            verticalAlign="bottom"
-                            height={60}
-                            wrapperStyle={{ fontSize: '12px' }}
-                            formatter={(value, entry) => {
-                              const total = problemsCategoryData.reduce((sum, item) => sum + item.value, 0)
-                              const payloadValue = entry.payload?.value ?? 0
-                              const percent = total > 0 ? ((payloadValue / total) * 100).toFixed(1) : '0'
-                              return `${value} (${payloadValue} - ${percent}%)`
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* Stats par catégorie */}
-                    <div className="bg-gray-50 rounded-xl p-6">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                        Détail par catégorie
-                      </h3>
-                      <div className="space-y-3 mt-6 max-h-[400px] overflow-y-auto">
-                        {currentStats
-                          .sort((a, b) => b.total - a.total)
-                          .map((stat, idx) => (
-                            <div key={idx} className="flex justify-between items-center p-3 bg-white rounded-lg">
-                              <span className={`font-medium ${stat.category === 'INTITULES INCOHERENTS' ? 'text-red-600' : 'text-gray-700'}`}>
-                                {stat.category}
-                              </span>
-                              <span className="text-lg font-bold text-gray-900">
-                                {stat.total}
-                              </span>
-                            </div>
+                  {/* Bar Chart - Categories */}
+                  <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                      Répartition par catégorie - {currentSubTabConfig.label}
+                    </h3>
+                    <ResponsiveContainer width="100%" height={Math.max(300, problemsCategoryData.length * 40)}>
+                      <BarChart
+                        data={problemsCategoryData}
+                        layout="vertical"
+                        margin={{ top: 5, right: 60, left: 10, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                        <XAxis
+                          type="number"
+                          domain={[0, 'auto']}
+                          tickFormatter={(value) => value.toLocaleString()}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          width={150}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip
+                          formatter={(value: number, name: string, props: any) => [
+                            `${value.toLocaleString()} appels (${props.payload.percent}%)`,
+                            ''
+                          ]}
+                          labelFormatter={(label) => label}
+                          contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                        />
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                          {problemsCategoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
-                      </div>
-                    </div>
+                          <LabelList
+                            dataKey="value"
+                            position="right"
+                            formatter={(value: number) => value.toLocaleString()}
+                            style={{ fontSize: 12, fontWeight: 600 }}
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
 
                   {/* Interactive Table - Problèmes */}
@@ -576,100 +537,50 @@ export default function Dashboard({ data, onReset }: DashboardProps) {
           ) : (
             <>
               {/* Charts - Rendez-vous */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                {/* Pie Chart - Categories */}
-                <div className="bg-gray-50 rounded-xl p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                    Répartition par catégorie
-                  </h3>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <PieChart>
-                      <Pie
-                        data={appointmentsCategoryData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={70}
-                        outerRadius={110}
-                        labelLine={(props) => {
-                          const { percent } = props
-                          const pct = percent * 100
-                          if (pct < 1) return <path d="" />
-                          return (
-                            <path
-                              d={props.points ? `M${props.points[0].x},${props.points[0].y}L${props.points[1].x},${props.points[1].y}` : ''}
-                              stroke="#9ca3af"
-                              strokeWidth={1}
-                              fill="none"
-                            />
-                          )
-                        }}
-                        label={({ cx, cy, midAngle, outerRadius, percent }) => {
-                          const pct = percent * 100
-                          if (pct < 1) return null
-                          const RADIAN = Math.PI / 180
-                          const radius = outerRadius + 20
-                          const x = cx + radius * Math.cos(-midAngle * RADIAN)
-                          const y = cy + radius * Math.sin(-midAngle * RADIAN)
-                          return (
-                            <text
-                              x={x}
-                              y={y}
-                              fill="#374151"
-                              textAnchor={x > cx ? 'start' : 'end'}
-                              dominantBaseline="central"
-                              fontSize="13"
-                              fontWeight="600"
-                            >
-                              {`${pct.toFixed(0)}%`}
-                            </text>
-                          )
-                        }}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {appointmentsCategoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend
-                        verticalAlign="bottom"
-                        height={60}
-                        wrapperStyle={{ fontSize: '12px' }}
-                        formatter={(value, entry) => {
-                          const total = appointmentsCategoryData.reduce((sum, item) => sum + item.value, 0)
-                          const payloadValue = entry.payload?.value ?? 0
-                          const percent = total > 0 ? ((payloadValue / total) * 100).toFixed(1) : '0'
-                          return `${value} (${payloadValue} - ${percent}%)`
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Stats - Durée totale */}
-                <div className="bg-gray-50 rounded-xl p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                    Durée totale par catégorie
-                  </h3>
-                  <div className="space-y-3 mt-6">
-                    {appointments_statistics
-                      .sort((a, b) => (b.total_duration || 0) - (a.total_duration || 0))
-                      .map((stat, idx) => (
-                        <div key={idx} className="flex justify-between items-center p-3 bg-white rounded-lg">
-                          <span className="font-medium text-gray-700">{stat.category}</span>
-                          <div className="text-right">
-                            <span className="text-lg font-bold text-green-600 block">
-                              {formatDuration(stat.total_duration || 0)}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              Moy: {formatDuration(stat.average_duration || 0)}
-                            </span>
-                          </div>
-                        </div>
+              {/* Bar Chart - Categories */}
+              <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                  Répartition par catégorie
+                </h3>
+                <ResponsiveContainer width="100%" height={Math.max(300, appointmentsCategoryData.length * 40)}>
+                  <BarChart
+                    data={appointmentsCategoryData}
+                    layout="vertical"
+                    margin={{ top: 5, right: 60, left: 10, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                    <XAxis
+                      type="number"
+                      domain={[0, 'auto']}
+                      tickFormatter={(value) => value.toLocaleString()}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={150}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <Tooltip
+                      formatter={(value: number, name: string, props: any) => [
+                        `${value.toLocaleString()} rendez-vous (${props.payload.percent}%)`,
+                        ''
+                      ]}
+                      labelFormatter={(label) => label}
+                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                      {appointmentsCategoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
-                  </div>
-                </div>
+                      <LabelList
+                        dataKey="value"
+                        position="right"
+                        formatter={(value: number) => value.toLocaleString()}
+                        style={{ fontSize: 12, fontWeight: 600 }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
 
               {/* Interactive Table - Rendez-vous */}
